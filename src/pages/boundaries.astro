@@ -1,0 +1,9 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { keyboardScenario } from '../content/scenarios/keyboard';
+---
+<BaseLayout title="Границы модели" description="Что показывает учебная модель клавиатурного ввода, какие варианты исключены и где используется визуальная метафора.">
+  <section class="page-heading container"><div class="eyebrow"><span class="eyebrow-dot"></span> ТОЧНОСТЬ МОДЕЛИ / ОБЯЗАТЕЛЬНО К ПРОЧТЕНИЮ</div><h1>Границы модели<span class="teal-dot">.</span></h1><p>У любого объяснения есть масштаб. Здесь он обозначен явно, чтобы схема помогала понимать, а не вводила в заблуждение.</p></section>
+  <div class="container boundaries-grid"><section><span class="boundary-number">01</span><h2>Что моделируется</h2><p>{keyboardScenario.profile}</p><p>{keyboardScenario.scope}</p></section><section><span class="boundary-number">02</span><h2>Что может отличаться</h2><ul>{keyboardScenario.assumptions.map((item) => <li>{item}</li>)}</ul><p>Разные устройства, ОС и браузеры могут распределять работу по другим стадиям.</p></section><section><span class="boundary-number">03</span><h2>Что не показано</h2><ul>{keyboardScenario.boundaries.slice(0, 2).map((item) => <li>{item}</li>)}</ul><p>Настоящие электрические уровни, машинные инструкции и точные тайминги не измеряются.</p></section><section><span class="boundary-number">04</span><h2>Где метафора</h2><p>{keyboardScenario.boundaries[2]}</p><p>Цвет, форма сигнала и расположение узлов помогают читать последовательность; они не описывают физическую структуру конкретного ПК.</p></section></div>
+  <div class="container boundary-cta"><p>Вернитесь к маршруту и проверьте каждое упрощение прямо на нужном этапе.</p><a class="button button-primary" href="/scenario/">Открыть сценарий ↗</a></div>
+</BaseLayout>

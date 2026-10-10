@@ -1,0 +1,10 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ScenarioApp from '../components/narrative/ScenarioApp';
+import { keyboardScenario } from '../content/scenarios/keyboard';
+---
+<BaseLayout title="Клавиша → символ" description="Восемь шагов от клавиши USB-клавиатуры до символа в активном поле браузера. Схема, 3D и доступный текстовый маршрут.">
+  <section class="page-heading container"><div class="eyebrow"><span class="eyebrow-dot"></span> СЦЕНАРИЙ 01 / USB-КЛАВИАТУРА</div><h1>Клавиша <span class="heading-arrow">→</span> символ</h1><p>Нажмите условную A. Остановитесь на любом этапе и посмотрите, что меняется в устройстве, системе и браузере.</p></section>
+  <div class="container scenario-container"><ScenarioApp client:load scenario={keyboardScenario} /></div>
+  <section class="container static-route"><details><summary>Полный текстовый маршрут без интерактивности <span aria-hidden="true">↗</span></summary><p>Этот маршрут доступен и без JavaScript или WebGL. Профиль: {keyboardScenario.profile}</p><ol>{keyboardScenario.steps.map((step) => <li id={`static-${step.id}`}><h3>{step.title}</h3><p><strong>Наблюдение:</strong> {step.userObservation}</p><p>{step.explanation.basic}</p><details><summary>Глубже и экспертный уровень</summary><p>{step.explanation.deeper}</p><p>{step.explanation.expert}</p></details><p><strong>Упрощено:</strong> {step.omissions.join(' ')}</p></li>)}</ol><p>Световой поток — метафора перехода сообщения или состояния, а не буквальная траектория электрона.</p></details></section>
+</BaseLayout>

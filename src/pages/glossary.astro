@@ -1,0 +1,8 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { terms } from '../content/glossary/terms';
+---
+<BaseLayout title="Глоссарий" description="Простые и точные определения терминов из маршрута от клавиши до символа.">
+  <section class="page-heading container"><div class="eyebrow"><span class="eyebrow-dot"></span> СПРАВОЧНИК / 11 ТЕРМИНОВ</div><h1>Глоссарий</h1><p>Сначала простое объяснение. Затем — точная формулировка и границы применимости.</p></section>
+  <section class="container glossary-grid" aria-label="Термины">{terms.map((term) => <article id={term.id} class="glossary-card"><div class="glossary-meta"><span>ЭТАП {term.stage}</span><span>↗</span></div><h2>{term.title}</h2><p class="glossary-simple">{term.simple}</p><dl><dt>Точнее</dt><dd>{term.precise}</dd><dt>Не путать с</dt><dd>{term.notToConfuse}</dd><dt>Применимость</dt><dd>{term.applicability}</dd></dl></article>)}</section>
+</BaseLayout>
