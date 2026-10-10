@@ -64,3 +64,12 @@ test('keeps the static worked example available without JavaScript', async ({ br
   await expect(page.getByText('10001₂ = 16 + 1 = 17₁₀.', { exact: false })).toBeVisible();
   await context.close();
 });
+
+test('falls back to the complete flat route when WebGL is disabled', async ({ page }) => {
+  await page.goto('/compute/');
+  await page.getByRole('button', { name: 'Показать вычисление' }).click();
+  await page.getByRole('button', { name: 'ALU 4–7' }).click();
+  await expect(page.getByTestId('compute-flat')).toBeVisible();
+  await expect(page.getByText('WEBGL НЕДОСТУПЕН · ПЛОСКИЙ ПУТЬ')).toBeVisible();
+  await expect(page.getByRole('table')).toBeVisible();
+});

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useReducer, useRef, useState, type KeyboardEvent, type SyntheticEvent } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useReducer, useRef, useState, type KeyboardEvent, type SyntheticEvent } from 'react';
 import { CHAPTER_LABELS, formatAnnouncement } from '../../content/arithmetic/copy';
 import type { ChapterKey } from '../../domain/arithmetic/buildTrace';
 import { createControllerState, currentTraceState, reduceController, type PlaybackSpeed } from '../../domain/arithmetic/controller';
@@ -31,6 +31,7 @@ export default function ComputeApp() {
   const aError = touched.a && parseOperand(aInput) === null;
   const bError = touched.b && parseOperand(bInput) === null;
   const showing3D = state !== null && webgl === true && !flatMode;
+  const handleContextLost = useCallback(() => { setWebgl(false); setFlatMode(true); }, []);
 
   useEffect(() => setWebgl(canCreateWebGLContext()), []);
 
@@ -98,7 +99,7 @@ export default function ComputeApp() {
 
     <div className={`compute-viewport${showing3D ? ' has-3d' : ''}`} data-testid="compute-stage" data-overview={overviewOverride ? 'true' : undefined}>
       {state ? showing3D ? <>
-        <Suspense fallback={<div className="compute-3d-loading">Загрузка объёмной модели…</div>}><Arithmetic3D state={state} overview={overviewOverride} resetToken={cameraResetToken} reducedMotion={reducedMotion} /></Suspense>
+        <Suspense fallback={<div className="compute-3d-loading">Загрузка объёмной модели…</div>}><Arithmetic3D state={state} overview={overviewOverride} resetToken={cameraResetToken} reducedMotion={reducedMotion} onContextLost={handleContextLost} /></Suspense>
         <div className="compute-sr-route"><FlatRoute state={state} /></div>
       </> : <FlatRoute state={state} /> : <div className="compute-empty-state"><div className="compute-empty-mark">A <span>+</span> B <span>→</span> Σ</div><p>Четыре полных сумматора · один путь данных · девять шагов</p><span>3D-сцена появится после запуска вычисления</span></div>}
       {state && (state.chapter === 'alu' || state.chapter === 'result') && <AdditionTable state={state} collapsed={tableCollapsed} onToggle={() => setTableCollapsed((value) => !value)} />}
