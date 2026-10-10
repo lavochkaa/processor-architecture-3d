@@ -24,6 +24,7 @@ export default function ComputeApp() {
   const [overviewOverride, setOverviewOverride] = useState(false);
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const [flatMode, setFlatMode] = useState(false);
+  const [cameraResetToken, setCameraResetToken] = useState(0);
   const aRef = useRef<HTMLInputElement>(null);
   const bRef = useRef<HTMLInputElement>(null);
   const state = currentTraceState(controller);
@@ -97,11 +98,11 @@ export default function ComputeApp() {
 
     <div className={`compute-viewport${showing3D ? ' has-3d' : ''}`} data-testid="compute-stage" data-overview={overviewOverride ? 'true' : undefined}>
       {state ? showing3D ? <>
-        <Suspense fallback={<div className="compute-3d-loading">Загрузка объёмной модели…</div>}><Arithmetic3D state={state} /></Suspense>
+        <Suspense fallback={<div className="compute-3d-loading">Загрузка объёмной модели…</div>}><Arithmetic3D state={state} overview={overviewOverride} resetToken={cameraResetToken} reducedMotion={reducedMotion} /></Suspense>
         <div className="compute-sr-route"><FlatRoute state={state} /></div>
       </> : <FlatRoute state={state} /> : <div className="compute-empty-state"><div className="compute-empty-mark">A <span>+</span> B <span>→</span> Σ</div><p>Четыре полных сумматора · один путь данных · девять шагов</p><span>3D-сцена появится после запуска вычисления</span></div>}
       {state && (state.chapter === 'alu' || state.chapter === 'result') && <AdditionTable state={state} collapsed={tableCollapsed} onToggle={() => setTableCollapsed((value) => !value)} />}
-      <div className="compute-viewport-footer"><span>● ДАННЫЕ &nbsp; ◆ ПЕРЕНОС</span><span>{webgl === false ? 'WEBGL НЕДОСТУПЕН · ПЛОСКИЙ ПУТЬ' : reducedMotion ? 'МГНОВЕННЫЕ ПЕРЕХОДЫ' : 'РУЧНОЙ РЕЖИМ ПО УМОЛЧАНИЮ'}</span>{state && webgl === true && <button type="button" onClick={() => setFlatMode((value) => !value)}>{flatMode ? 'Показать 3D' : 'Плоский вид'}</button>}</div>
+      <div className="compute-viewport-footer"><span>● ДАННЫЕ &nbsp; ◆ ПЕРЕНОС</span><span>{webgl === false ? 'WEBGL НЕДОСТУПЕН · ПЛОСКИЙ ПУТЬ' : reducedMotion ? 'МГНОВЕННЫЕ ПЕРЕХОДЫ' : 'РУЧНОЙ РЕЖИМ ПО УМОЛЧАНИЮ'}</span>{showing3D && <button type="button" onClick={() => { setOverviewOverride(false); setCameraResetToken((value) => value + 1); }}>Вернуть камеру</button>}{state && webgl === true && <button type="button" onClick={() => setFlatMode((value) => !value)}>{flatMode ? 'Показать 3D' : 'Плоский вид'}</button>}</div>
     </div>
 
     {state && <div className="compute-controls">
