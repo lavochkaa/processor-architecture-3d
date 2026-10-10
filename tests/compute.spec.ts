@@ -73,3 +73,24 @@ test('falls back to the complete flat route when WebGL is disabled', async ({ pa
   await expect(page.getByText('WEBGL НЕДОСТУПЕН · ПЛОСКИЙ ПУТЬ')).toBeVisible();
   await expect(page.getByRole('table')).toBeVisible();
 });
+
+test('keeps zero carry empty and preserves the fifth bit for 15 + 15', async ({ page }) => {
+  await page.goto('/compute/');
+  await page.getByRole('textbox', { name: 'Число A' }).fill('0');
+  await page.getByRole('textbox', { name: 'Число B' }).fill('0');
+  await page.getByRole('button', { name: 'Показать вычисление' }).click();
+  await page.getByRole('button', { name: 'Результат 8–9' }).click();
+  await expect(page.locator('.compute-panel')).toContainText('c₄ = 0');
+  await expect(page.locator('.compute-panel')).toContainText('00000');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await expect(page.locator('.compute-panel')).toContainText('= 0₁₀');
+
+  await page.getByRole('button', { name: 'Изменить числа' }).click();
+  await page.getByRole('textbox', { name: 'Число A' }).fill('15');
+  await page.getByRole('textbox', { name: 'Число B' }).fill('15');
+  await page.getByRole('button', { name: 'Показать вычисление' }).click();
+  await page.getByRole('button', { name: 'Результат 8–9' }).click();
+  await expect(page.locator('.compute-panel')).toContainText('11110');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await expect(page.locator('.compute-panel')).toContainText('= 30₁₀');
+});

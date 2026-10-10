@@ -139,7 +139,7 @@ export function BoardWorld({ state, reducedMotion }: { state: AdditionTraceState
     <group position={[SCENE_NODES.screen[0], 0, SCENE_NODES.screen[2]]}>
       <mesh position={[0, .42, -.08]}><boxGeometry args={[1.42, 1.2, .2]} /><meshStandardMaterial color={state.activeNode === 'screen' ? '#66696b' : '#343639'} metalness={.45} roughness={.55} /></mesh>
       <mesh position={[0, .43, .025]}><planeGeometry args={[1.24, .96]} /><meshBasicMaterial color="#111315" /></mesh>
-      <TextLabel text={state.screenValue === null ? '—' : String(state.screenValue)} position={[0, .45, .035]} width={.9} vertical />
+      {state.screenValue !== null && <TextLabel text={String(state.screenValue)} position={[0, .45, .038]} width={.9} vertical compact />}
       <TextLabel text="ЭКРАН" position={[0, -.01, .45]} width={.95} />
     </group>
     <TextLabel text="ЛОГИЧЕСКАЯ МОДЕЛЬ, НЕ ДОРОЖКИ ПЛАТЫ" position={[-.6, -.29, 2.8]} width={4.1} color="#a9adb0" />
