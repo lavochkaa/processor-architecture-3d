@@ -4,9 +4,10 @@ import type { AdditionTraceState } from '../../domain/arithmetic/buildTrace';
 function RegisterDetails({ state }: { state: AdditionTraceState }) {
   return <div className="compute-register-grid">
     <span><small>ОПЕРАНДЫ</small><strong>{state.a} + {state.b}</strong><code>{state.aBits} + {state.bBits}</code></span>
-    <span><small>БУФЕР</small><code>{state.buffer ? `${state.buffer.aBits} / ${state.buffer.bBits}` : '—'}</code></span>
+    <span><small>RAM · A / B</small><code>{state.memory.aBits ?? '—'} / {state.memory.bBits ?? '—'}</code></span>
     <span><small>РЕГИСТР A / B</small><code>{state.registers.aBits ?? '—'} / {state.registers.bBits ?? '—'}</code></span>
     <span><small>{RESULT_REGISTER_LABEL.toUpperCase()}</small><code>{state.registers.resultBits ?? '—'}</code></span>
+    <span><small>RAM · РЕЗУЛЬТАТ</small><code>{state.memory.resultBits ?? '—'}</code></span>
   </div>;
 }
 
@@ -15,7 +16,7 @@ export function AdditionPanel({ state, onEdit, onOverview }: { state: AdditionTr
   return <header className="compute-panel">
     <div className="compute-panel-top">
       <span className="compute-eyebrow">ЛОГИЧЕСКАЯ МОДЕЛЬ / {CHAPTER_LABELS[state.chapter]}</span>
-      <span className="compute-step-counter">Шаг {state.step} из 9</span>
+      <span className="compute-step-counter">Шаг {state.step} из 10</span>
       <button type="button" className="compute-text-button" onClick={onEdit}>Изменить числа</button>
     </div>
     <div className="compute-panel-main">

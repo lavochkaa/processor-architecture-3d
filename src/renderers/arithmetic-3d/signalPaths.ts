@@ -3,8 +3,8 @@ import { adderPosition, SCENE_NODES, type Point3 } from './sceneLayout';
 
 function pointFor(name: string, signal: TraceSignal, destination: boolean): Point3 {
   const lane = name.endsWith('-a') ? -.25 : name.endsWith('-b') ? .25 : 0;
-  if (name.startsWith('input-')) return [SCENE_NODES.keyboard[0], .47, lane];
-  if (name.startsWith('buffer-')) return [SCENE_NODES.buffer[0], .49, lane];
+  if (name.startsWith('keyboard-')) return [SCENE_NODES.keyboard[0], .47, lane];
+  if (name.startsWith('ram-')) return [SCENE_NODES.buffer[0], .49, name === 'ram-result' ? .39 : lane];
   if (name === 'register-a') return [SCENE_NODES.registerA[0], .49, SCENE_NODES.registerA[2]];
   if (name === 'register-b') return [SCENE_NODES.registerB[0], .49, SCENE_NODES.registerB[2]];
   if (name.startsWith('adder-')) {

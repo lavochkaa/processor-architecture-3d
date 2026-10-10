@@ -97,10 +97,11 @@ export function BoardWorld({ state, reducedMotion }: { state: AdditionTraceState
       <InstancedPads positions={keyboardKeys} size={[.22, .075, .18]} color="#787b7e" />
       <TextLabel text="КЛАВИАТУРА" position={[0, .26, .43]} width={1.13} />
     </Module>
-    <Module position={SCENE_NODES.buffer} size={[1.55, 1.35]} active={state.activeNode === 'buffer'}>
-      <group position={[0, 0, -.25]}><BitStrip value={state.buffer?.aBits ?? null} /></group>
-      <group position={[0, 0, .25]}><BitStrip value={state.buffer?.bBits ?? null} /></group>
-      <TextLabel text="БУФЕР ВВОДА (УСЛОВНЫЙ)" position={[0, .27, .57]} width={1.5} />
+    <Module position={SCENE_NODES.buffer} size={[1.55, 1.35]} active={state.activeNode === 'ram-operands' || state.activeNode === 'ram-result'}>
+      <group position={[0, 0, -.32]}><BitStrip value={state.memory.aBits} /></group>
+      <group position={[0, 0, .05]}><BitStrip value={state.memory.bBits} /></group>
+      <group position={[0, 0, .39]}><BitStrip value={state.memory.resultBits} width={1.27} /></group>
+      <TextLabel text="RAM / A · B · РЕЗУЛЬТАТ" position={[0, .27, .64]} width={1.5} />
     </Module>
     <Module position={SCENE_NODES.registerA} size={[1.55, .7]} active={state.activeNode === 'registers'}>
       <BitStrip value={state.registers.aBits} />

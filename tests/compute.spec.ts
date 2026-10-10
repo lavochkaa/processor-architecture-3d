@@ -18,27 +18,27 @@ test('validates operands and focuses the first invalid field', async ({ page }) 
   await expect(b).toBeFocused();
   await b.fill('15');
   await page.getByRole('button', { name: 'Показать вычисление' }).click();
-  await expect(page.getByText('Шаг 1 из 9', { exact: true })).toBeVisible();
+  await expect(page.getByText('Шаг 1 из 10', { exact: true })).toBeVisible();
   await expect(page.getByTestId('compute-flat')).toBeVisible();
 });
 
-test('synchronizes nine steps, carry, five-bit register, screen, and reverse navigation', async ({ page }) => {
+test('synchronizes ten steps, RAM, carry, five-bit register, screen, and reverse navigation', async ({ page }) => {
   await page.goto('/compute/');
   await page.getByRole('button', { name: 'Показать вычисление' }).click();
   await expect(page.locator('.compute-panel').getByText('11 → 1011; 6 → 0110.', { exact: false })).toBeVisible();
   await page.getByRole('toolbar', { name: 'Главы вычисления' }).getByRole('button', { name: /ALU/ }).click();
-  await expect(page.getByText('Шаг 4 из 9', { exact: true })).toBeVisible();
+  await expect(page.getByText('Шаг 4 из 10', { exact: true })).toBeVisible();
   await expect(page.getByRole('table')).toBeVisible();
   await expect(page.getByRole('table').getByRole('cell', { name: 'c0: 0' })).toBeVisible();
-  for (let step = 5; step <= 9; step += 1) {
+  for (let step = 5; step <= 10; step += 1) {
     await page.getByRole('button', { name: 'Дальше' }).click();
-    await expect(page.getByText(`Шаг ${step} из 9`, { exact: true })).toBeVisible();
+    await expect(page.getByText(`Шаг ${step} из 10`, { exact: true })).toBeVisible();
   }
   await expect(page.locator('.compute-panel').getByText('10001₂ = 16 + 1 = 17₁₀.', { exact: false })).toBeVisible();
   await expect(page.getByRole('list', { name: 'Путь операндов' })).toContainText('17');
   await page.getByRole('button', { name: 'Назад' }).click();
-  await expect(page.getByText('Шаг 8 из 9', { exact: true })).toBeVisible();
-  await expect(page.locator('.compute-panel').getByText('Перенос не потерян', { exact: false })).toBeVisible();
+  await expect(page.getByText('Шаг 9 из 10', { exact: true })).toBeVisible();
+  await expect(page.locator('.compute-panel').getByText('Результат записан в RAM', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: 'Изменить числа' }).click();
   await expect(page.getByRole('textbox', { name: 'Число A' })).toHaveValue('11');
 });
@@ -48,11 +48,11 @@ test('limits arrow navigation to the focused chapter strip and fits a 360px view
   await page.goto('/compute/');
   await page.getByRole('button', { name: 'Показать вычисление' }).click();
   await page.keyboard.press('ArrowRight');
-  await expect(page.getByText('Шаг 1 из 9', { exact: true })).toBeVisible();
+  await expect(page.getByText('Шаг 1 из 10', { exact: true })).toBeVisible();
   const toolbar = page.getByRole('toolbar', { name: 'Главы вычисления' });
-  await toolbar.getByRole('button', { name: /Регистры/ }).focus();
+  await toolbar.getByRole('button', { name: /Память и регистры/ }).focus();
   await page.keyboard.press('ArrowRight');
-  await expect(page.getByText('Шаг 4 из 9', { exact: true })).toBeVisible();
+  await expect(page.getByText('Шаг 4 из 10', { exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
 });
 
@@ -79,9 +79,11 @@ test('keeps zero carry empty and preserves the fifth bit for 15 + 15', async ({ 
   await page.getByRole('textbox', { name: 'Число A' }).fill('0');
   await page.getByRole('textbox', { name: 'Число B' }).fill('0');
   await page.getByRole('button', { name: 'Показать вычисление' }).click();
-  await page.getByRole('button', { name: 'Результат 8–9' }).click();
+  await page.getByRole('button', { name: 'Результат 8–10' }).click();
   await expect(page.locator('.compute-panel')).toContainText('c₄ = 0');
   await expect(page.locator('.compute-panel')).toContainText('00000');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await expect(page.locator('.compute-panel')).toContainText('RAM');
   await page.getByRole('button', { name: 'Дальше' }).click();
   await expect(page.locator('.compute-panel')).toContainText('= 0₁₀');
 
@@ -89,8 +91,10 @@ test('keeps zero carry empty and preserves the fifth bit for 15 + 15', async ({ 
   await page.getByRole('textbox', { name: 'Число A' }).fill('15');
   await page.getByRole('textbox', { name: 'Число B' }).fill('15');
   await page.getByRole('button', { name: 'Показать вычисление' }).click();
-  await page.getByRole('button', { name: 'Результат 8–9' }).click();
+  await page.getByRole('button', { name: 'Результат 8–10' }).click();
   await expect(page.locator('.compute-panel')).toContainText('11110');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await expect(page.locator('.compute-panel')).toContainText('RAM');
   await page.getByRole('button', { name: 'Дальше' }).click();
   await expect(page.locator('.compute-panel')).toContainText('= 30₁₀');
 });

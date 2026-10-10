@@ -39,24 +39,24 @@ describe('ComputeApp', () => {
     expect(screen.getByRole('button', { name: 'Показать вычисление' }).hasAttribute('disabled')).toBe(false);
     fireEvent.change(b, { target: { value: '15' } });
     fireEvent.click(screen.getByRole('button', { name: 'Показать вычисление' }));
-    expect(screen.getByText('Шаг 1 из 9')).toBeTruthy();
+    expect(screen.getByText('Шаг 1 из 10')).toBeTruthy();
   });
 
   it('uses full live text for manual changes and only chapter changes during playback', () => {
     render(<ComputeApp />);
     fireEvent.click(screen.getByRole('button', { name: 'Показать вычисление' }));
     const live = document.querySelector('[aria-live="polite"]');
-    expect(live?.textContent).toMatch(/^Шаг 1 из 9\./);
+    expect(live?.textContent).toMatch(/^Шаг 1 из 10\./);
     fireEvent.click(screen.getByRole('button', { name: 'Дальше' }));
-    expect(live?.textContent).toMatch(/^Шаг 2 из 9\./);
+    expect(live?.textContent).toMatch(/^Шаг 2 из 10\./);
     vi.useFakeTimers();
     fireEvent.click(screen.getByRole('button', { name: 'Воспроизвести' }));
     act(() => vi.advanceTimersByTime(2000));
-    expect(screen.getByText('Шаг 3 из 9')).toBeTruthy();
-    expect(live?.textContent).toBe('');
+    expect(screen.getByText('Шаг 3 из 10')).toBeTruthy();
+    expect(live?.textContent).toBe('Глава Память и регистры. Шаг 3 из 10.');
     act(() => vi.advanceTimersByTime(2000));
-    expect(screen.getByText('Шаг 4 из 9')).toBeTruthy();
-    expect(live?.textContent).toBe('Глава ALU. Шаг 4 из 9.');
+    expect(screen.getByText('Шаг 4 из 10')).toBeTruthy();
+    expect(live?.textContent).toBe('Глава ALU. Шаг 4 из 10.');
   });
 
   it('shows empty operand positions, unknown future sums, and the first input carry in the table', () => {

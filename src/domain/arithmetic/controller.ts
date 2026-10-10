@@ -28,7 +28,7 @@ export type ControllerAction =
 
 const FIRST_STEP_BY_CHAPTER: Record<ChapterKey, number> = {
   input: 0,
-  registers: 1,
+  memory: 2,
   alu: 3,
   result: 7
 };

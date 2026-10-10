@@ -1,16 +1,18 @@
 import type { AdditionResult, Bit, FullAdderColumn } from './computeAddition';
 
-export type ChapterKey = 'input' | 'registers' | 'alu' | 'result';
+export type ChapterKey = 'input' | 'memory' | 'alu' | 'result';
 export type CameraKey = 'board' | 'alu-closeup' | 'result';
-export type ActiveNode = 'input' | 'buffer' | 'registers' | 'adder' | 'result-register' | 'screen';
-export type CaptionKey = 'input.convert' | 'registers.buffer' | 'registers.load' | 'alu.bit' | 'result.assemble' | 'result.display';
+export type ActiveNode = 'input' | 'ram-operands' | 'registers' | 'adder' | 'result-register' | 'ram-result' | 'screen';
+export type CaptionKey = 'input.convert' | 'memory.store-operands' | 'memory.load-registers' | 'alu.bit' | 'result.assemble' | 'result.store-memory' | 'result.display';
 
 export interface TraceSignal {
-  readonly shape: 'circle' | 'diamond';
+  readonly shape: 'packet' | 'diamond';
   readonly from: string;
   readonly to: string;
   readonly bitIndex: number | null;
   readonly value: Bit | null;
+  readonly label: 'A' | 'B' | 'Σ' | string | null;
+  readonly bits: string | null;
 }
 
 export interface AdditionTableState {
@@ -35,7 +37,7 @@ export interface AdditionTraceState {
   readonly b: number;
   readonly aBits: string;
   readonly bBits: string;
-  readonly buffer: Readonly<{ aBits: string; bBits: string }> | null;
+  readonly memory: Readonly<{ aBits: string | null; bBits: string | null; resultBits: string | null }>;
   readonly registers: Readonly<{ aBits: string | null; bBits: string | null; resultBits: string | null }>;
   readonly carryIn: Bit | null;
   readonly carryOut: Bit | null;
@@ -45,46 +47,46 @@ export interface AdditionTraceState {
 }
 
 const CHAPTERS: readonly ChapterKey[] = [
-  'input', 'registers', 'registers', 'alu', 'alu', 'alu', 'alu', 'result', 'result'
+  'input', 'input', 'memory', 'alu', 'alu', 'alu', 'alu', 'result', 'result', 'result'
 ];
 const CAMERAS: readonly CameraKey[] = [
-  'board', 'board', 'board', 'alu-closeup', 'alu-closeup', 'alu-closeup', 'alu-closeup', 'result', 'result'
+  'board', 'board', 'board', 'alu-closeup', 'alu-closeup', 'alu-closeup', 'alu-closeup', 'result', 'result', 'result'
 ];
 const CAPTIONS: readonly CaptionKey[] = [
-  'input.convert', 'registers.buffer', 'registers.load', 'alu.bit', 'alu.bit', 'alu.bit', 'alu.bit',
-  'result.assemble', 'result.display'
+  'input.convert', 'memory.store-operands', 'memory.load-registers', 'alu.bit', 'alu.bit', 'alu.bit', 'alu.bit',
+  'result.assemble', 'result.store-memory', 'result.display'
 ];
 const NODES: readonly ActiveNode[] = [
-  'input', 'buffer', 'registers', 'adder', 'adder', 'adder', 'adder', 'result-register', 'screen'
+  'input', 'ram-operands', 'registers', 'adder', 'adder', 'adder', 'adder', 'result-register', 'ram-result', 'screen'
 ];
 
-function circle(from: string, to: string, value: Bit | null, bitIndex: number | null = null): TraceSignal {
-  return Object.freeze({ shape: 'circle' as const, from, to, value, bitIndex });
+function packet(from: string, to: string, label: 'A' | 'B' | 'Σ', bits: string, bitIndex: number | null = null): TraceSignal {
+  return Object.freeze({ shape: 'packet' as const, from, to, bitIndex, value: null, label, bits });
 }
 
 function diamond(from: string, to: string, bitIndex: number): TraceSignal {
-  return Object.freeze({ shape: 'diamond' as const, from, to, value: 1 as const, bitIndex });
+  return Object.freeze({ shape: 'diamond' as const, from, to, value: 1 as const, bitIndex, label: `c${bitIndex + 1}`, bits: null });
 }
 
 function signalsForStep(result: AdditionResult, step: number): readonly TraceSignal[] {
   if (step === 2) {
     return Object.freeze([
-      circle('input-a', 'buffer-a', null),
-      circle('input-b', 'buffer-b', null)
+      packet('keyboard-a', 'ram-a', 'A', result.aBits),
+      packet('keyboard-b', 'ram-b', 'B', result.bBits)
     ]);
   }
   if (step === 3) {
     return Object.freeze([
-      circle('buffer-a', 'register-a', null),
-      circle('buffer-b', 'register-b', null)
+      packet('ram-a', 'register-a', 'A', result.aBits),
+      packet('ram-b', 'register-b', 'B', result.bBits)
     ]);
   }
   if (step >= 4 && step <= 7) {
     const bit = step - 4;
     const column = result.columns[bit];
     const signals = [
-      circle('register-a', `adder-${bit}`, column.aBit, bit),
-      circle('register-b', `adder-${bit}`, column.bBit, bit)
+      packet('register-a', `adder-${bit}`, 'A', String(column.aBit), bit),
+      packet('register-b', `adder-${bit}`, 'B', String(column.bBit), bit)
     ];
     if (column.carryOut === 1) {
       signals.push(diamond(`adder-${bit}`, bit === 3 ? 'carry-out' : `adder-${bit + 1}`, bit));
@@ -93,12 +95,13 @@ function signalsForStep(result: AdditionResult, step: number): readonly TraceSig
   }
   if (step === 8) {
     const signals: TraceSignal[] = result.columns.map((column) =>
-      circle(`adder-${column.index}`, 'result-register', column.sumBit, column.index)
+      packet(`adder-${column.index}`, 'result-register', 'Σ', String(column.sumBit), column.index)
     );
     if (result.finalCarry === 1) signals.push(diamond('carry-out', 'result-register', 4));
     return Object.freeze(signals);
   }
-  if (step === 9) return Object.freeze([circle('result-register', 'screen', null)]);
+  if (step === 9) return Object.freeze([packet('result-register', 'ram-result', 'Σ', result.resultBits)]);
+  if (step === 10) return Object.freeze([packet('ram-result', 'screen', 'Σ', result.resultBits)]);
   return Object.freeze([]);
 }
 
@@ -122,10 +125,9 @@ function tableForStep(result: AdditionResult, step: number): AdditionTableState 
   });
 }
 
-/** A deterministic, immutable nine-state view of one arithmetic result. */
+/** A deterministic, immutable ten-state view of one arithmetic result. */
 export function buildTrace(result: AdditionResult): readonly AdditionTraceState[] {
-  const buffer = Object.freeze({ aBits: result.aBits, bBits: result.bBits });
-  const states = Array.from({ length: 9 }, (_, index): AdditionTraceState => {
+  const states = Array.from({ length: 10 }, (_, index): AdditionTraceState => {
     const step = index + 1;
     const activeBit = step >= 4 && step <= 7 ? step - 4 : null;
     const activeColumn = activeBit === null ? null : result.columns[activeBit];
@@ -142,7 +144,11 @@ export function buildTrace(result: AdditionResult): readonly AdditionTraceState[
       b: result.b,
       aBits: result.aBits,
       bBits: result.bBits,
-      buffer: step >= 2 ? buffer : null,
+      memory: Object.freeze({
+        aBits: step >= 2 ? result.aBits : null,
+        bBits: step >= 2 ? result.bBits : null,
+        resultBits: step >= 9 ? result.resultBits : null
+      }),
       registers: Object.freeze({
         aBits: step >= 3 ? result.aBits : null,
         bBits: step >= 3 ? result.bBits : null,
@@ -152,7 +158,7 @@ export function buildTrace(result: AdditionResult): readonly AdditionTraceState[
       carryOut: activeColumn?.carryOut ?? null,
       table: tableForStep(result, step),
       signals: signalsForStep(result, step),
-      screenValue: step === 9 ? result.result : null
+      screenValue: step === 10 ? result.result : null
     });
   });
   return Object.freeze(states);

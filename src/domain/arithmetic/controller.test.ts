@@ -22,15 +22,16 @@ describe('addition controller', () => {
     expect(currentTraceState(jump)).toEqual(currentTraceState(linear));
     expect(jump.playing).toBe(false);
     expect(jump.announcement).toEqual({ kind: 'step', step: 4 });
+    expect(currentTraceState(reduceController(started, { type: 'jump-chapter', chapter: 'memory' }))?.step).toBe(3);
   });
 
   it('announces only chapter changes and stopping during automatic playback', () => {
     let state = reduceController(createControllerState(), { type: 'start', a: 11, b: 6 });
     state = reduceController(state, { type: 'play' });
     state = reduceController(state, { type: 'tick' });
-    expect(state.announcement).toEqual({ kind: 'chapter', chapter: 'registers', step: 2 });
-    state = reduceController(state, { type: 'tick' });
     expect(state.announcement).toBeNull();
+    state = reduceController(state, { type: 'tick' });
+    expect(state.announcement).toEqual({ kind: 'chapter', chapter: 'memory', step: 3 });
     state = reduceController(state, { type: 'tick' });
     expect(state.announcement).toEqual({ kind: 'chapter', chapter: 'alu', step: 4 });
     state = reduceController(state, { type: 'pause' });
@@ -38,13 +39,13 @@ describe('addition controller', () => {
     expect(state.playing).toBe(false);
   });
 
-  it('stops autoplay on manual navigation and never passes step 9', () => {
+  it('stops autoplay on manual navigation and never passes step 10', () => {
     let state = reduceController(createControllerState(), { type: 'start', a: 0, b: 0 });
     state = reduceController(state, { type: 'play' });
     state = reduceController(state, { type: 'next' });
     expect(state.playing).toBe(false);
     for (let step = 0; step < 20; step += 1) state = reduceController(state, { type: 'next' });
-    expect(currentTraceState(state)?.step).toBe(9);
+    expect(currentTraceState(state)?.step).toBe(10);
     expect(state.playing).toBe(false);
   });
 

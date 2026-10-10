@@ -8,10 +8,10 @@ import { AdditionPanel } from './AdditionPanel';
 import { AdditionTable } from './AdditionTable';
 import { FlatRoute } from './FlatRoute';
 
-const CHAPTERS: readonly ChapterKey[] = ['input', 'registers', 'alu', 'result'];
+const CHAPTERS: readonly ChapterKey[] = ['input', 'memory', 'alu', 'result'];
 const Arithmetic3D = lazy(() => import('../../renderers/arithmetic-3d/Arithmetic3D'));
 const CHAPTER_RANGES: Record<ChapterKey, string> = {
-  input: '1', registers: '2–3', alu: '4–7', result: '8–9'
+  input: '1–2', memory: '3', alu: '4–7', result: '8–10'
 };
 
 export default function ComputeApp() {
@@ -101,9 +101,9 @@ export default function ComputeApp() {
       {state ? showing3D ? <>
         <Suspense fallback={<div className="compute-3d-loading">Загрузка объёмной модели…</div>}><Arithmetic3D state={state} overview={overviewOverride} resetToken={cameraResetToken} reducedMotion={reducedMotion} onContextLost={handleContextLost} /></Suspense>
         <div className="compute-sr-route"><FlatRoute state={state} /></div>
-      </> : <FlatRoute state={state} /> : <div className="compute-empty-state"><div className="compute-empty-mark">A <span>+</span> B <span>→</span> Σ</div><p>Четыре полных сумматора · один путь данных · девять шагов</p><span>3D-сцена появится после запуска вычисления</span></div>}
+      </> : <FlatRoute state={state} /> : <div className="compute-empty-state"><div className="compute-empty-mark">A <span>+</span> B <span>→</span> Σ</div><p>RAM · CPU · четыре полных сумматора · десять шагов</p><span>После запуска значения пройдут по учебному маршруту</span></div>}
       {state && (state.chapter === 'alu' || state.chapter === 'result') && <AdditionTable state={state} collapsed={tableCollapsed} onToggle={() => setTableCollapsed((value) => !value)} />}
-      <div className="compute-viewport-footer"><span>● ДАННЫЕ &nbsp; ◆ ПЕРЕНОС</span><span>{webgl === false ? 'WEBGL НЕДОСТУПЕН · ПЛОСКИЙ ПУТЬ' : reducedMotion ? 'МГНОВЕННЫЕ ПЕРЕХОДЫ' : 'РУЧНОЙ РЕЖИМ ПО УМОЛЧАНИЮ'}</span>{showing3D && <button type="button" onClick={() => { setOverviewOverride(false); setCameraResetToken((value) => value + 1); }}>Вернуть камеру</button>}{state && webgl === true && <button type="button" onClick={() => setFlatMode((value) => !value)}>{flatMode ? 'Показать 3D' : 'Плоский вид'}</button>}</div>
+      <div className="compute-viewport-footer"><span>▰ ЗНАЧЕНИЕ &nbsp; ◆ ПЕРЕНОС</span><span>{webgl === false ? 'WEBGL НЕДОСТУПЕН · ПЛОСКИЙ ПУТЬ' : reducedMotion ? 'МГНОВЕННЫЕ ПЕРЕХОДЫ' : 'РУЧНОЙ РЕЖИМ ПО УМОЛЧАНИЮ'}</span>{showing3D && <button type="button" onClick={() => { setOverviewOverride(false); setCameraResetToken((value) => value + 1); }}>Вернуть камеру</button>}{state && webgl === true && <button type="button" onClick={() => setFlatMode((value) => !value)}>{flatMode ? 'Показать 3D' : 'Плоский вид'}</button>}</div>
     </div>
 
     {state && <div className="compute-controls">
@@ -112,9 +112,9 @@ export default function ComputeApp() {
       </div>
       <div className="compute-controls-row">
         <button className="button button-ghost" type="button" onClick={() => dispatch({ type: 'previous' })}>Назад</button>
-        <button className="button button-primary" type="button" disabled={state.step === 9} onClick={() => dispatch({ type: 'next' })}>Дальше</button>
+        <button className="button button-primary" type="button" disabled={state.step === 10} onClick={() => dispatch({ type: 'next' })}>Дальше</button>
         <span className="compute-controls-spacer" />
-        <button className="button button-ghost" type="button" onClick={() => dispatch({ type: controller.playing ? 'pause' : 'play' })} disabled={state.step === 9 && !controller.playing}>{controller.playing ? 'Пауза' : 'Воспроизвести'}</button>
+        <button className="button button-ghost" type="button" onClick={() => dispatch({ type: controller.playing ? 'pause' : 'play' })} disabled={state.step === 10 && !controller.playing}>{controller.playing ? 'Пауза' : 'Воспроизвести'}</button>
         <label className="compute-speed">Скорость <select value={controller.speed} onChange={(event) => dispatch({ type: 'speed', speed: Number(event.target.value) as PlaybackSpeed })}><option value="0.5">0.5×</option><option value="1">1×</option><option value="2">2×</option></select></label>
       </div>
     </div>}

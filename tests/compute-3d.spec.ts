@@ -10,7 +10,7 @@ test('macro board renders as the main scene while its labels remain available in
   await page.getByRole('button', { name: 'Показать вычисление' }).click();
   const canvas = page.getByTestId('compute-3d').locator('canvas');
   await expect(canvas).toBeVisible();
-  await expect(page.getByRole('list', { name: 'Путь операндов' })).toContainText('Буфер ввода (условный)');
+  await expect(page.getByRole('list', { name: 'Путь операндов' })).toContainText('RAM · операнды');
   await expect(page.getByRole('list', { name: 'Путь операндов' })).toContainText('Регистр результата (условный, 5 бит)');
 });
 
@@ -25,7 +25,7 @@ test('camera scale follows ALU and result chapters, with overview and reset cont
   await expect(page.getByTestId('compute-stage')).toHaveAttribute('data-overview', 'true');
   await page.getByRole('button', { name: 'Вернуть камеру' }).click();
   await expect(page.getByTestId('compute-stage')).not.toHaveAttribute('data-overview');
-  await page.getByRole('button', { name: 'Результат 8–9' }).click();
+  await page.getByRole('button', { name: 'Результат 8–10' }).click();
   await expect(page.getByRole('navigation', { name: 'Масштаб сцены' })).toContainText('Результат');
 });
 
@@ -44,7 +44,7 @@ test('lost WebGL context retains the current ALU step and switches to the flat r
   });
   if (!lost) test.skip(true, 'WEBGL_lose_context is unavailable');
   await expect(page.getByTestId('compute-flat')).toBeVisible();
-  await expect(page.getByText('Шаг 4 из 9', { exact: true })).toBeVisible();
+  await expect(page.getByText('Шаг 4 из 10', { exact: true })).toBeVisible();
   await expect(page.getByRole('table')).toBeVisible();
 });
 
