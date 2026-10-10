@@ -1,39 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useThree } from '@react-three/fiber';
-import { CanvasTexture, Object3D, SRGBColorSpace, type InstancedMesh } from 'three';
+import { Object3D, type InstancedMesh } from 'three';
 import type { AdditionTraceState } from '../../domain/arithmetic/buildTrace';
 import { adderPosition, SCENE_NODES, type Point3 } from './sceneLayout';
+import { TextLabel } from './TextLabel';
+import { CarryMarker, SignalActors } from './SignalActors';
 
 type Vec3 = [number, number, number];
-
-function TextLabel({ text, position, width = 1, color = '#f1f1ef', vertical = false }: {
-  text: string; position: Vec3; width?: number; color?: string; vertical?: boolean;
-}) {
-  const texture = useMemo(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 128;
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('Text canvas unavailable');
-    let size = 62;
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillStyle = color;
-    do {
-      context.font = `700 ${size}px Arial, sans-serif`;
-      size -= 2;
-    } while (context.measureText(text).width > 970 && size > 24);
-    context.fillText(text, 512, 64);
-    const value = new CanvasTexture(canvas);
-    value.colorSpace = SRGBColorSpace;
-    return value;
-  }, [text, color]);
-  useEffect(() => () => texture.dispose(), [texture]);
-  return <mesh position={position} rotation={vertical ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}>
-    <planeGeometry args={[width, width * .125]} />
-    <meshBasicMaterial map={texture} transparent depthWrite={false} />
-  </mesh>;
-}
 
 function InstancedPads({ positions, size, color }: { positions: readonly Vec3[]; size: Vec3; color: string }) {
   const ref = useRef<InstancedMesh>(null);
@@ -98,8 +71,10 @@ const keyboardKeys: Vec3[] = Array.from({ length: 12 }, (_, index) => [
   -.25 + Math.floor(index / 4) * .25
 ]);
 
-export function BoardWorld({ state }: { state: AdditionTraceState }) {
+export function BoardWorld({ state, reducedMotion }: { state: AdditionTraceState; reducedMotion: boolean }) {
   const inputActive = state.activeNode === 'input';
+  const [settledStep, setSettledStep] = useState(0);
+  const onSignalsSettled = useCallback(() => setSettledStep(state.step), [state.step]);
   return <>
     <color attach="background" args={['#0b0c0e']} />
     <ambientLight intensity={2.3} />
@@ -141,14 +116,24 @@ export function BoardWorld({ state }: { state: AdditionTraceState }) {
     {[3, 2, 1, 0].map((bit) => {
       const position = adderPosition(bit);
       return <Module key={bit} position={position} size={[.58, 1.15]} active={state.activeBit === bit}>
-        <TextLabel text={`FA${bit}`} position={[0, .29, -.28]} width={.48} />
-        <group position={[0, .05, .2]}><BitStrip value={state.table.sum[bit] === null ? '?' : String(state.table.sum[bit])} width={.25} /></group>
-        {[-.38, 0, .38].map((z) => <mesh key={z} position={[-.22, .2, z]}><cylinderGeometry args={[.035, .035, .08, 8]} /><meshStandardMaterial color="#c3c5c6" metalness={.8} roughness={.25} /></mesh>)}
+        <TextLabel text={`FA${bit}`} position={[0, .32, -.52]} width={.39} />
+        {([
+          ['A', state.registers.aBits?.[3 - bit] ?? '?', -.27],
+          ['B', state.registers.bBits?.[3 - bit] ?? '?', .04],
+          ['Σ', state.table.sum[bit] === null ? '?' : String(state.table.sum[bit]), .35]
+        ] as const).map(([label, value, z]) => <group key={label}>
+          <TextLabel text={label} position={[-.18, .3, z]} width={.16} />
+          <group position={[.07, .05, z]}><BitStrip value={value} width={.23} /></group>
+        </group>)}
+        {[-.27, .04, .35].map((z) => <mesh key={z} position={[-.29, .2, z]}><cylinderGeometry args={[.028, .028, .08, 8]} /><meshStandardMaterial color="#c3c5c6" metalness={.8} roughness={.25} /></mesh>)}
       </Module>;
     })}
 
+    {state.activeBit !== null && state.carryIn !== null && <CarryMarker value={state.carryIn} position={[adderPosition(state.activeBit)[0] + .3, .52, .55]} />}
+    {state.activeBit !== null && state.carryOut !== null && <CarryMarker value={state.carryOut} position={[adderPosition(state.activeBit)[0] - .3, .52, .55]} />}
+
     <Module position={SCENE_NODES.result} size={[1.78, .82]} active={state.activeNode === 'result-register'}>
-      <BitStrip value={state.registers.resultBits} width={1.47} />
+      <BitStrip value={state.step === 8 && settledStep !== 8 ? null : state.registers.resultBits} width={1.47} />
       <TextLabel text="РЕГИСТР РЕЗУЛЬТАТА / 5 БИТ" position={[0, .27, .34]} width={1.7} />
     </Module>
     <group position={[SCENE_NODES.screen[0], 0, SCENE_NODES.screen[2]]}>
@@ -158,5 +143,6 @@ export function BoardWorld({ state }: { state: AdditionTraceState }) {
       <TextLabel text="ЭКРАН" position={[0, -.01, .45]} width={.95} />
     </group>
     <TextLabel text="ЛОГИЧЕСКАЯ МОДЕЛЬ, НЕ ДОРОЖКИ ПЛАТЫ" position={[-.6, -.29, 2.8]} width={4.1} color="#a9adb0" />
+    {settledStep !== state.step && <SignalActors key={state.step} signals={state.signals} reducedMotion={reducedMotion} onSettled={onSignalsSettled} />}
   </>;
 }
