@@ -8,6 +8,10 @@ export const arithmeticSources = [
     url: 'https://ocw.mit.edu/courses/6-004-computation-structures-spring-2017/pages/c8/c8s1/'
   },
   {
+    title: 'MIT OpenCourseWare: регистры, кэши и основная память',
+    url: 'https://ocw.mit.edu/courses/6-004-computation-structures-spring-2017/pages/c14/c14s1/'
+  },
+  {
     title: 'WHATWG HTML Standard: числовое поле и очистка недопустимого значения',
     url: 'https://html.spec.whatwg.org/multipage/input.html#number-state-(type=number)'
   },
