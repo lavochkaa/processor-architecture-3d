@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adderPosition, SCENE_NODES } from './sceneLayout';
+import { adderPosition, CPU_FOOTPRINT, SCENE_NODES } from './sceneLayout';
 
 describe('3D addition layout', () => {
   it('keeps the data route on one board from input to screen', () => {
@@ -16,5 +16,17 @@ describe('3D addition layout', () => {
     for (let bit = 1; bit < 4; bit += 1) expect(positions[bit][0]).toBeLessThan(positions[bit - 1][0]);
     expect(() => adderPosition(-1)).toThrow(RangeError);
     expect(() => adderPosition(4)).toThrow(RangeError);
+  });
+
+  it('puts registers, ALU and result inside one CPU package, with separate RAM and SSD', () => {
+    for (const name of ['registerA', 'registerB', 'alu', 'result'] as const) {
+      const [x, , z] = SCENE_NODES[name];
+      expect(x).toBeGreaterThan(CPU_FOOTPRINT.minX);
+      expect(x).toBeLessThan(CPU_FOOTPRINT.maxX);
+      expect(z).toBeGreaterThan(CPU_FOOTPRINT.minZ);
+      expect(z).toBeLessThan(CPU_FOOTPRINT.maxZ);
+    }
+    expect(SCENE_NODES.buffer[0]).toBeLessThan(CPU_FOOTPRINT.minX);
+    expect(SCENE_NODES.ssd[2]).toBeGreaterThan(CPU_FOOTPRINT.maxZ);
   });
 });

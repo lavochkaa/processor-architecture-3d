@@ -31,6 +31,8 @@
 .compute-field{display:grid;gap:5px;position:relative}
 .compute-field label{font:11px var(--mono);color:#d2d3d5}
 .compute-field input{width:90px;height:54px;padding:8px 12px;background:#1c1e21;border:1px solid #5a5d62;border-radius:6px;color:#fff;font:700 24px var(--mono)}
+.compute-field.is-selected input{border-color:#e8ebeb;box-shadow:0 0 0 1px #e8ebeb}
+.compute-field.is-selected label:after{content:" · 3D";color:#c9cdce}
 .compute-field input[aria-invalid=true]{border-color:#e5b1a8;box-shadow:0 0 0 1px #e5b1a8}
 .compute-error{position:absolute;top:100%;left:0;z-index:4;width:245px;background:#31201e;color:#fff;padding:7px 9px;border:1px solid #c3887e;border-radius:4px;font-size:11px;line-height:1.3}
 .compute-plus{font:700 24px var(--mono);margin-top:19px}
@@ -39,6 +41,12 @@
 .compute-viewport{min-height:650px;position:relative;background:radial-gradient(ellipse 70% 60% at 58% 48%,#17191c 0,#0a0b0d 75%);overflow:hidden}
 .compute-canvas{position:absolute;inset:0;z-index:1}
 .compute-canvas canvas{display:block}
+.compute-node-callout{position:absolute;z-index:2;transform:translate(-50%,calc(-100% - 13px));width:max-content;max-width:min(270px,calc(100% - 24px));padding:9px 11px;border:1px solid #aeb3b5;border-radius:6px;background:rgba(15,17,19,.94);box-shadow:0 12px 28px #0009;color:#f2f3f2;pointer-events:none;font:11px/1.4 var(--mono);text-align:left}
+.compute-node-callout strong{display:block;font-size:11px;letter-spacing:.06em;margin-bottom:3px}
+.compute-node-callout span{display:block;color:#d0d3d4;white-space:normal}
+.compute-node-callout:after{content:"";position:absolute;left:calc(50% - 5px);bottom:-6px;width:9px;height:9px;transform:rotate(45deg);background:#151719;border-right:1px solid #aeb3b5;border-bottom:1px solid #aeb3b5}
+.compute-ssd-help{position:absolute;z-index:3;right:14px;top:14px;border:1px solid #777c80;border-radius:4px;background:#171a1ddd;color:#f0f1ef;padding:6px 9px;font:10px var(--mono);cursor:pointer}
+.compute-ssd-help:hover,.compute-ssd-help:focus-visible{border-color:#f1f2f0;background:#303539}
 .compute-3d-loading{position:absolute;inset:0;display:grid;place-items:center;color:#b7babd;font:12px var(--mono)}
 .compute-sr-route{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .compute-flat-route{padding:22px 26px 72px;min-height:650px;position:relative}

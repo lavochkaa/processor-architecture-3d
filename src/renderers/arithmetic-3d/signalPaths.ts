@@ -25,3 +25,39 @@ function pointFor(name: string, signal: TraceSignal, destination: boolean): Poin
 export function resolveSignalPath(signal: TraceSignal): readonly [Point3, Point3] {
   return [pointFor(signal.from, signal, false), pointFor(signal.to, signal, true)];
 }
+
+/** The return bus follows the visible rear lane instead of cutting through the CPU package. */
+export function routeForSignal(signal: TraceSignal): readonly Point3[] {
+  const [from, to] = resolveSignalPath(signal);
+  if ((signal.from === 'result-register' && signal.to === 'ram-result')
+    || (signal.from === 'ram-result' && signal.to === 'screen')) {
+    const rearZ = -2.25;
+    return [from, [from[0], .48, rearZ], [to[0], .48, rearZ], to];
+  }
+  return [from, to];
+}
+
+export function pointOnRoute(route: readonly Point3[], phase: number): Point3 {
+  if (route.length < 2) throw new RangeError('A route needs at least two points');
+  if (phase <= 0) return route[0];
+  if (phase >= 1) return route[route.length - 1];
+  const lengths = route.slice(1).map((point, index) => Math.hypot(
+    point[0] - route[index][0], point[1] - route[index][1], point[2] - route[index][2]
+  ));
+  const total = lengths.reduce((sum, length) => sum + length, 0);
+  let distance = Math.max(0, Math.min(1, phase)) * total;
+  for (let index = 0; index < lengths.length; index += 1) {
+    if (distance <= lengths[index] || index === lengths.length - 1) {
+      const from = route[index];
+      const to = route[index + 1];
+      const fraction = lengths[index] === 0 ? 0 : Math.max(0, Math.min(1, distance / lengths[index]));
+      return [
+        from[0] + (to[0] - from[0]) * fraction,
+        from[1] + (to[1] - from[1]) * fraction,
+        from[2] + (to[2] - from[2]) * fraction
+      ];
+    }
+    distance -= lengths[index];
+  }
+  return route[route.length - 1];
+}

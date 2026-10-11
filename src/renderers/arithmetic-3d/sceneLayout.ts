@@ -7,8 +7,11 @@ export const SCENE_NODES = {
   registerB: [-1.55, 0, 1.05] as Point3,
   alu: [1.02, 0, 0] as Point3,
   result: [3.75, 0, 0] as Point3,
+  ssd: [-3.55, 0, 2.12] as Point3,
   screen: [5.52, 0, 0] as Point3
 } as const;
+
+export const CPU_FOOTPRINT = { minX: -2.5, maxX: 4.48, minZ: -1.55, maxZ: 1.55 } as const;
 
 /** Bit 0 is at the right edge, so a carry toward bit i+1 travels left. */
 export function adderPosition(bit: number): Point3 {

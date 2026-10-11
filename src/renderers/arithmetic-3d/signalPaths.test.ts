@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildTrace } from '../../domain/arithmetic/buildTrace';
 import { computeAddition } from '../../domain/arithmetic/computeAddition';
-import { resolveSignalPath } from './signalPaths';
+import { pointOnRoute, resolveSignalPath, routeForSignal } from './signalPaths';
 
 describe('3D signal paths', () => {
   it('resolves every trace signal to finite scene coordinates', () => {
@@ -28,5 +28,23 @@ describe('3D signal paths', () => {
     const trace = buildTrace(computeAddition(11, 6));
     expect(trace[3].carryIn).toBe(0);
     expect(trace[3].signals.some((signal) => signal.shape === 'diamond')).toBe(false);
+  });
+
+  it('routes the CPU writeback through a visible edge lane and reaches both endpoints', () => {
+    const writeback = buildTrace(computeAddition(11, 6))[8].signals[0];
+    const route = routeForSignal(writeback);
+    const [from, to] = resolveSignalPath(writeback);
+    expect(route[0]).toEqual(from);
+    expect(route.at(-1)).toEqual(to);
+    expect(route.length).toBeGreaterThan(2);
+    expect(route.some((point) => point[2] < -2)).toBe(true);
+    expect(pointOnRoute(route, 0)).toEqual(from);
+    expect(pointOnRoute(route, 1)).toEqual(to);
+  });
+
+  it('interpolates distance continuously along every segment', () => {
+    const route = [[0, 0, 0], [2, 0, 0], [2, 0, 2]] as const;
+    expect(pointOnRoute(route, .25)).toEqual([1, 0, 0]);
+    expect(pointOnRoute(route, .75)).toEqual([2, 0, 1]);
   });
 });

@@ -15,7 +15,7 @@ export function CameraRig({ position, target, resetToken, reducedMotion }: { pos
     const orbit = new OrbitControls(camera, gl.domElement);
     orbit.enableDamping = false;
     orbit.minDistance = 3;
-    orbit.maxDistance = 13;
+    orbit.maxDistance = 30;
     orbit.maxPolarAngle = Math.PI * 0.72;
     const onChange = () => invalidate();
     const onStart = () => { moving.current = false; };

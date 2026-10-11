@@ -1,10 +1,14 @@
-import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Object3D, type InstancedMesh } from 'three';
 import type { AdditionTraceState } from '../../domain/arithmetic/buildTrace';
-import { adderPosition, SCENE_NODES, type Point3 } from './sceneLayout';
+import type { KeypadKey } from '../../components/arithmetic/keypadInput';
+import { adderPosition, CPU_FOOTPRINT, SCENE_NODES, type Point3 } from './sceneLayout';
 import { TextLabel } from './TextLabel';
 import { CarryMarker, SignalActors } from './SignalActors';
+import { motionForTransition, type TransitionMotion } from './motionState';
+import { routeForSignal } from './signalPaths';
+import { CpuLid } from './CpuLid';
 
 type Vec3 = [number, number, number];
 
@@ -65,16 +69,46 @@ const edgeContacts: Vec3[] = Array.from({ length: 28 }, (_, index) => [
   -.305,
   index < 14 ? -2.62 : 2.62
 ]);
-const keyboardKeys: Vec3[] = Array.from({ length: 12 }, (_, index) => [
-  -.43 + (index % 4) * .28,
-  .205,
-  -.25 + Math.floor(index / 4) * .25
-]);
+const keyboardKeys: readonly KeypadKey[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'A/B', '0', '⌫'];
+const cpuPins: Vec3[] = [
+  ...Array.from({ length: 22 }, (_, index): Vec3 => [CPU_FOOTPRINT.minX + .25 + index * .31, -.18, CPU_FOOTPRINT.minZ - .07]),
+  ...Array.from({ length: 22 }, (_, index): Vec3 => [CPU_FOOTPRINT.minX + .25 + index * .31, -.18, CPU_FOOTPRINT.maxZ + .07]),
+  ...Array.from({ length: 8 }, (_, index): Vec3 => [CPU_FOOTPRINT.minX - .07, -.18, CPU_FOOTPRINT.minZ + .25 + index * .36]),
+  ...Array.from({ length: 8 }, (_, index): Vec3 => [CPU_FOOTPRINT.maxX + .07, -.18, CPU_FOOTPRINT.minZ + .25 + index * .36])
+];
+const ramContacts: Vec3[] = Array.from({ length: 12 }, (_, index): Vec3 => [-.67 + index * .12, .205, .67]);
+const ramChips: Vec3[] = [-.49, -.16, .16, .49].map((x): Vec3 => [x, .245, -.53]);
 
-export function BoardWorld({ state, reducedMotion }: { state: AdditionTraceState; reducedMotion: boolean }) {
-  const inputActive = state.activeNode === 'input';
-  const [settledStep, setSettledStep] = useState(0);
-  const onSignalsSettled = useCallback(() => setSettledStep(state.step), [state.step]);
+type VisualState = { target: AdditionTraceState | null; shown: AdditionTraceState | null; motion: TransitionMotion | null };
+
+export function BoardWorld({ state, speed, reducedMotion, selectedInput, pressedKey, onKeyPress, onSettled, onInspectSsd }: {
+  state: AdditionTraceState | null; speed: number; reducedMotion: boolean; selectedInput: 'a' | 'b';
+  pressedKey: KeypadKey | null; onKeyPress: (key: KeypadKey) => void;
+  onSettled?: (state: AdditionTraceState) => void;
+  onInspectSsd: () => void;
+}) {
+  const { gl } = useThree();
+  const inputActive = !state || state.activeNode === 'input';
+  const [visual, setVisual] = useState<VisualState>({ target: state, shown: state, motion: null });
+  useEffect(() => {
+    setVisual((current) => {
+      if (current.target === state && !reducedMotion) return current;
+      const motion = motionForTransition(current.target, state);
+      return reducedMotion || motion.signals.length === 0
+        ? { target: state, shown: state, motion: null }
+        : { target: state, shown: current.shown, motion };
+    });
+  }, [state, reducedMotion]);
+  useEffect(() => {
+    if (state && visual.target === state && visual.shown === state && !visual.motion) onSettled?.(state);
+  }, [state, visual, onSettled]);
+  const onSignalsSettled = useCallback(() => {
+    setVisual((current) => current.target === state ? { ...current, shown: state, motion: null } : current);
+    if (state) onSettled?.(state);
+  }, [state, onSettled]);
+  const shown = visual.shown;
+  const rearRoute = routeForSignal({ shape: 'packet', from: 'result-register', to: 'ram-result', bitIndex: null, value: null, label: 'Σ', bits: '00000' });
+  const screenRoute = routeForSignal({ shape: 'packet', from: 'ram-result', to: 'screen', bitIndex: null, value: null, label: 'Σ', bits: '00000' });
   return <>
     <color attach="background" args={['#0b0c0e']} />
     <ambientLight intensity={2.3} />
@@ -91,24 +125,48 @@ export function BoardWorld({ state, reducedMotion }: { state: AdditionTraceState
     <TraceSegment from={SCENE_NODES.registerA} to={SCENE_NODES.alu} />
     <TraceSegment from={SCENE_NODES.registerB} to={SCENE_NODES.alu} />
     <TraceSegment from={SCENE_NODES.alu} to={SCENE_NODES.result} />
-    <TraceSegment from={SCENE_NODES.result} to={SCENE_NODES.screen} />
+    {rearRoute.slice(1).map((point, index) => <TraceSegment key={`write-${index}`} from={rearRoute[index]} to={point} />)}
+    {screenRoute.slice(1).map((point, index) => <TraceSegment key={`display-${index}`} from={screenRoute[index]} to={point} />)}
 
-    <Module position={SCENE_NODES.keyboard} size={[1.35, 1.1]} active={inputActive}>
-      <InstancedPads positions={keyboardKeys} size={[.22, .075, .18]} color="#787b7e" />
-      <TextLabel text="КЛАВИАТУРА" position={[0, .26, .43]} width={1.13} />
+    <group aria-label="Корпус процессора">
+      <mesh position={[(CPU_FOOTPRINT.minX + CPU_FOOTPRINT.maxX) / 2, -.205, 0]}><boxGeometry args={[CPU_FOOTPRINT.maxX - CPU_FOOTPRINT.minX, .21, CPU_FOOTPRINT.maxZ - CPU_FOOTPRINT.minZ]} /><meshStandardMaterial color="#6a6e70" metalness={.55} roughness={.42} /></mesh>
+      <mesh position={[(CPU_FOOTPRINT.minX + CPU_FOOTPRINT.maxX) / 2, -.085, 0]}><boxGeometry args={[CPU_FOOTPRINT.maxX - CPU_FOOTPRINT.minX - .24, .035, CPU_FOOTPRINT.maxZ - CPU_FOOTPRINT.minZ - .24]} /><meshStandardMaterial color="#262a2d" metalness={.32} roughness={.65} /></mesh>
+      <InstancedPads positions={cpuPins} size={[.095, .11, .085]} color="#b8bec0" />
+      {[CPU_FOOTPRINT.minZ, CPU_FOOTPRINT.maxZ].map((z) => <mesh key={z} position={[(CPU_FOOTPRINT.minX + CPU_FOOTPRINT.maxX) / 2, .15, z]}><boxGeometry args={[CPU_FOOTPRINT.maxX - CPU_FOOTPRINT.minX, .2, .13]} /><meshStandardMaterial color="#8b9193" metalness={.6} roughness={.35} /></mesh>)}
+      {[CPU_FOOTPRINT.minX, CPU_FOOTPRINT.maxX].map((x) => <mesh key={x} position={[x, .15, 0]}><boxGeometry args={[.13, .2, CPU_FOOTPRINT.maxZ - CPU_FOOTPRINT.minZ]} /><meshStandardMaterial color="#8b9193" metalness={.6} roughness={.35} /></mesh>)}
+      <TextLabel text="CPU / ПРОЦЕССОР" position={[.95, .28, CPU_FOOTPRINT.minZ]} width={2.7} />
+      <TextLabel text="РЕГИСТРЫ  →  ALU  →  РЕЗУЛЬТАТ" position={[.95, -.015, CPU_FOOTPRINT.maxZ - .09]} width={4.8} color="#bfc4c5" />
+    </group>
+    <CpuLid step={state?.step ?? null} speed={speed} reducedMotion={reducedMotion} />
+
+    <Module position={SCENE_NODES.keyboard} size={[1.78, 1.52]} active={inputActive}>
+      {keyboardKeys.map((key, index) => <group key={key} position={[-.49 + (index % 3) * .49, pressedKey === key ? -.045 : .025, -.48 + Math.floor(index / 3) * .31]} onPointerOver={() => { gl.domElement.style.cursor = state ? '' : 'pointer'; }} onPointerOut={() => { gl.domElement.style.cursor = ''; }} onClick={(event) => { event.stopPropagation(); onKeyPress(key); }}>
+        <mesh position={[0, .22, 0]}><boxGeometry args={[.42, .1, .26]} /><meshStandardMaterial color={pressedKey === key ? '#d4d7d7' : '#858b8e'} metalness={.25} roughness={.6} /></mesh>
+        <TextLabel text={key} color="#101214" position={[0, .278, 0]} width={key === 'A/B' ? .34 : .28} compact />
+      </group>)}
+      <TextLabel text={`КЛАВИАТУРА / ${selectedInput.toUpperCase()}`} position={[0, .3, .68]} width={1.58} />
     </Module>
-    <Module position={SCENE_NODES.buffer} size={[1.55, 1.35]} active={state.activeNode === 'ram-operands' || state.activeNode === 'ram-result'}>
-      <group position={[0, 0, -.32]}><BitStrip value={state.memory.aBits} /></group>
-      <group position={[0, 0, .05]}><BitStrip value={state.memory.bBits} /></group>
-      <group position={[0, 0, .39]}><BitStrip value={state.memory.resultBits} width={1.27} /></group>
+    <Module position={SCENE_NODES.buffer} size={[1.55, 1.35]} active={state?.activeNode === 'ram-operands' || state?.activeNode === 'ram-result'}>
+      <InstancedPads positions={ramContacts} size={[.075, .02, .16]} color="#c4c6c2" />
+      <InstancedPads positions={ramChips} size={[.23, .09, .19]} color="#151719" />
+      <group position={[0, 0, -.32]}><BitStrip value={shown?.memory.aBits ?? null} /></group>
+      <group position={[0, 0, .05]}><BitStrip value={shown?.memory.bBits ?? null} /></group>
+      <group position={[0, 0, .39]}><BitStrip value={shown?.memory.resultBits ?? null} width={1.27} /></group>
       <TextLabel text="RAM / A · B · РЕЗУЛЬТАТ" position={[0, .27, .64]} width={1.5} />
     </Module>
-    <Module position={SCENE_NODES.registerA} size={[1.55, .7]} active={state.activeNode === 'registers'}>
-      <BitStrip value={state.registers.aBits} />
+    <group onClick={(event) => { event.stopPropagation(); onInspectSsd(); }}>
+    <Module position={SCENE_NODES.ssd} size={[1.48, .75]} active={false}>
+      <InstancedPads positions={[[-.38, .22, -.05], [0, .22, -.05], [.38, .22, -.05]]} size={[.28, .08, .33]} color="#17191b" />
+      <mesh position={[.61, .21, -.27]} rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[.05, .09, 16]} /><meshStandardMaterial color="#b6bbbc" metalness={.8} roughness={.3} side={2} /></mesh>
+      <TextLabel text="SSD / НЕ УЧАСТВУЕТ" position={[0, .29, .31]} width={1.35} />
+    </Module>
+    </group>
+    <Module position={SCENE_NODES.registerA} size={[1.55, .7]} active={state?.activeNode === 'registers'}>
+      <BitStrip value={shown?.registers.aBits ?? null} />
       <TextLabel text="РЕГИСТР A" position={[0, .27, .29]} width={1.05} />
     </Module>
-    <Module position={SCENE_NODES.registerB} size={[1.55, .7]} active={state.activeNode === 'registers'}>
-      <BitStrip value={state.registers.bBits} />
+    <Module position={SCENE_NODES.registerB} size={[1.55, .7]} active={state?.activeNode === 'registers'}>
+      <BitStrip value={shown?.registers.bBits ?? null} />
       <TextLabel text="РЕГИСТР B" position={[0, .27, .29]} width={1.05} />
     </Module>
 
@@ -116,12 +174,12 @@ export function BoardWorld({ state, reducedMotion }: { state: AdditionTraceState
     <TextLabel text="ALU / ЧЕТЫРЕ ПОЛНЫХ СУММАТОРА" position={[1.03, .025, -.79]} width={2.85} />
     {[3, 2, 1, 0].map((bit) => {
       const position = adderPosition(bit);
-      return <Module key={bit} position={position} size={[.58, 1.15]} active={state.activeBit === bit}>
+      return <Module key={bit} position={position} size={[.58, 1.15]} active={state?.activeBit === bit}>
         <TextLabel text={`FA${bit}`} position={[0, .32, -.52]} width={.39} />
         {([
-          ['A', state.registers.aBits?.[3 - bit] ?? '?', -.27],
-          ['B', state.registers.bBits?.[3 - bit] ?? '?', .04],
-          ['Σ', state.table.sum[bit] === null ? '?' : String(state.table.sum[bit]), .35]
+          ['A', shown?.registers.aBits?.[3 - bit] ?? '?', -.27],
+          ['B', shown?.registers.bBits?.[3 - bit] ?? '?', .04],
+          ['Σ', shown?.table.sum[bit] == null ? '?' : String(shown.table.sum[bit]), .35]
         ] as const).map(([label, value, z]) => <group key={label}>
           <TextLabel text={label} position={[-.18, .3, z]} width={.16} />
           <group position={[.07, .05, z]}><BitStrip value={value} width={.23} /></group>
@@ -130,20 +188,20 @@ export function BoardWorld({ state, reducedMotion }: { state: AdditionTraceState
       </Module>;
     })}
 
-    {state.activeBit !== null && state.carryIn !== null && <CarryMarker value={state.carryIn} position={[adderPosition(state.activeBit)[0] + .3, .52, .55]} />}
-    {state.activeBit !== null && state.carryOut !== null && <CarryMarker value={state.carryOut} position={[adderPosition(state.activeBit)[0] - .3, .52, .55]} />}
+    {shown?.activeBit != null && shown.carryIn !== null && <CarryMarker value={shown.carryIn} position={[adderPosition(shown.activeBit)[0] + .3, .52, .55]} />}
+    {shown?.activeBit != null && shown.carryOut !== null && <CarryMarker value={shown.carryOut} position={[adderPosition(shown.activeBit)[0] - .3, .52, .55]} />}
 
-    <Module position={SCENE_NODES.result} size={[1.78, .82]} active={state.activeNode === 'result-register'}>
-      <BitStrip value={state.step === 8 && settledStep !== 8 ? null : state.registers.resultBits} width={1.47} />
+    <Module position={SCENE_NODES.result} size={[1.78, .82]} active={state?.activeNode === 'result-register'}>
+      <BitStrip value={shown?.registers.resultBits ?? null} width={1.47} />
       <TextLabel text="РЕГИСТР РЕЗУЛЬТАТА / 5 БИТ" position={[0, .27, .34]} width={1.7} />
     </Module>
     <group position={[SCENE_NODES.screen[0], 0, SCENE_NODES.screen[2]]}>
-      <mesh position={[0, .42, -.08]}><boxGeometry args={[1.42, 1.2, .2]} /><meshStandardMaterial color={state.activeNode === 'screen' ? '#66696b' : '#343639'} metalness={.45} roughness={.55} /></mesh>
+      <mesh position={[0, .42, -.08]}><boxGeometry args={[1.42, 1.2, .2]} /><meshStandardMaterial color={state?.activeNode === 'screen' ? '#66696b' : '#343639'} metalness={.45} roughness={.55} /></mesh>
       <mesh position={[0, .43, .025]}><planeGeometry args={[1.24, .96]} /><meshBasicMaterial color="#111315" /></mesh>
-      {state.screenValue !== null && <TextLabel text={String(state.screenValue)} position={[0, .45, .038]} width={.9} vertical compact />}
+      {shown?.screenValue != null && <TextLabel text={String(shown.screenValue)} position={[0, .45, .038]} width={.9} vertical compact />}
       <TextLabel text="ЭКРАН" position={[0, -.01, .45]} width={.95} />
     </group>
     <TextLabel text="ЛОГИЧЕСКАЯ МОДЕЛЬ, НЕ ДОРОЖКИ ПЛАТЫ" position={[-.6, -.29, 2.8]} width={4.1} color="#a9adb0" />
-    {settledStep !== state.step && <SignalActors key={state.step} signals={state.signals} reducedMotion={reducedMotion} onSettled={onSignalsSettled} />}
+    {state && visual.motion && <SignalActors key={`${visual.target?.step}-${visual.shown?.step}`} signals={visual.motion.signals} reverse={visual.motion.reverse} speed={speed} reducedMotion={reducedMotion} onSettled={onSignalsSettled} />}
   </>;
 }

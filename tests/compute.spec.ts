@@ -62,6 +62,7 @@ test('keeps the static worked example available without JavaScript', async ({ br
   await page.goto('http://127.0.0.1:4321/compute/');
   await page.getByText('Текстовый разбор примера 11 + 6 без JavaScript').click();
   await expect(page.getByText('10001₂ = 16 + 1 = 17₁₀.', { exact: false })).toBeVisible();
+  await expect(page.getByText('RAM принимает оба операнда', { exact: false })).toBeVisible();
   await context.close();
 });
 
