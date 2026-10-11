@@ -8,7 +8,7 @@ import { AdditionPanel } from './AdditionPanel';
 import { AdditionTable } from './AdditionTable';
 import { FlatRoute } from './FlatRoute';
 import { applyKeypadInput, type KeypadKey } from './keypadInput';
-import { motionForTransition } from '../../renderers/arithmetic-3d/motionState';
+import { isDirectJump, motionForTransition } from '../../renderers/arithmetic-3d/motionState';
 
 const CHAPTERS: readonly ChapterKey[] = ['input', 'memory', 'alu', 'result'];
 const Arithmetic3D = lazy(() => import('../../renderers/arithmetic-3d/Arithmetic3D'));
@@ -62,8 +62,9 @@ export default function ComputeApp() {
 
   useEffect(() => {
     setPresentedState((current) => {
-      if (!state || !showing3D || reducedMotion || motionForTransition(current, state).signals.length === 0) return state;
-      return current;
+      if (!state || !showing3D || reducedMotion) return state;
+      if (motionForTransition(current, state).signals.length > 0 || isDirectJump(current, state)) return current;
+      return state;
     });
   }, [state, showing3D, reducedMotion]);
 

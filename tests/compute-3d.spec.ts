@@ -1,10 +1,46 @@
 import { expect, test } from '@playwright/test';
+import { PerspectiveCamera, Vector3 } from 'three';
+import { inputCameraPose } from '../src/renderers/arithmetic-3d/cameraPresets';
 
 test('shows the board before the calculation starts', async ({ page }) => {
   await page.goto('/compute/');
   if (!await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')))) test.skip(true, 'WebGL is unavailable');
   await expect(page.getByTestId('compute-3d').locator('canvas')).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Число A' })).toBeVisible();
+});
+
+test('presses actual 3D keys to edit A and B before running the calculation', async ({ page }) => {
+  await page.goto('/compute/');
+  if (!await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')))) test.skip(true, 'WebGL is unavailable');
+  const canvas = page.getByTestId('compute-3d').locator('canvas');
+  await expect(canvas).toBeVisible();
+  await page.evaluate(() => {
+    const stage = document.querySelector<HTMLElement>('.compute-viewport');
+    if (stage) window.scrollTo(0, stage.getBoundingClientRect().top + window.scrollY - 20);
+  });
+  await page.waitForTimeout(1400);
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+  const pose = inputCameraPose();
+  const camera = new PerspectiveCamera(42, box!.width / box!.height, .1, 80);
+  camera.position.set(...pose.position);
+  camera.lookAt(...pose.target);
+  camera.updateMatrixWorld();
+  camera.updateProjectionMatrix();
+  async function pressKey(column: number, row: number) {
+    const point = new Vector3(-5.35 - .49 + column * .49, .27, -.48 + row * .31).project(camera);
+    await page.mouse.click(box!.x + (point.x + 1) * box!.width / 2, box!.y + (1 - point.y) * box!.height / 2);
+  }
+  await pressKey(2, 3); // Backspace: A 11 → 1.
+  await expect(page.getByRole('textbox', { name: 'Число A' })).toHaveValue('1');
+  await pressKey(1, 1); // 5: A 1 → 15.
+  await expect(page.getByRole('textbox', { name: 'Число A' })).toHaveValue('15');
+  await pressKey(0, 3); // A/B.
+  await pressKey(2, 3); // Backspace: B 6 → empty.
+  await pressKey(1, 0); // 2.
+  await expect(page.getByRole('textbox', { name: 'Число B' })).toHaveValue('2');
+  await page.getByRole('button', { name: 'Показать вычисление' }).click();
+  await expect(page.getByText('15 + 2', { exact: false }).first()).toBeVisible();
 });
 
 test('explains why the separate SSD is visible but inactive', async ({ page }) => {
@@ -60,6 +96,21 @@ test('moves the five-bit answer from CPU to RAM before showing it on the screen'
   await expect(stage).toHaveAttribute('data-presented-step', '9');
   await expect(stage).toHaveAttribute('data-presented-step', '10', { timeout: 5000 });
   await expect(page.locator('.compute-node-callout')).toContainText('17');
+});
+
+test('chapter jumps keep the prior data visible during the camera move', async ({ page }) => {
+  await page.goto('/compute/');
+  if (!await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')))) test.skip(true, 'WebGL is unavailable');
+  await page.getByRole('button', { name: 'Показать вычисление' }).click();
+  await expect(page.getByTestId('compute-3d').locator('canvas')).toBeVisible();
+  await expect(page.locator('.compute-node-callout')).toContainText('Ввод');
+  await page.getByLabel('Скорость').selectOption('0.5');
+  const stage = page.getByTestId('compute-stage');
+  await page.getByRole('button', { name: 'ALU 4–7' }).click();
+  await expect(stage).toHaveAttribute('data-presented-step', '1');
+  await expect(page.locator('.compute-node-callout')).toContainText('Переход к главе');
+  await expect(stage).toHaveAttribute('data-presented-step', '4', { timeout: 5000 });
+  await expect(page.locator('.compute-node-callout')).toContainText('ALU · сумматор 0');
 });
 
 test('macro board renders as the main scene while its labels remain available in the DOM', async ({ page }) => {
@@ -163,4 +214,20 @@ test('demand renderer stops issuing draws after a step settles', async ({ page }
   expect(afterTransition).toBeGreaterThan(0);
   await page.waitForTimeout(700);
   expect(await page.evaluate(() => (window as Window & { __drawCount?: number }).__drawCount ?? 0)).toBe(afterTransition);
+});
+
+test('remains responsive with four-times CPU throttling', async ({ page }) => {
+  const session = await page.context().newCDPSession(page);
+  await session.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+  try {
+    await page.goto('/compute/');
+    if (!await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')))) test.skip(true, 'WebGL is unavailable');
+    await page.getByRole('button', { name: 'Показать вычисление' }).click();
+    await expect(page.getByTestId('compute-3d').locator('canvas')).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: 'Дальше' }).click();
+    await expect(page.getByTestId('compute-stage')).toHaveAttribute('data-presented-step', '2', { timeout: 15_000 });
+    await expect(page.getByRole('button', { name: 'Дальше' })).toBeEnabled();
+  } finally {
+    await session.detach();
+  }
 });

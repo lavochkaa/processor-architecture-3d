@@ -8,6 +8,7 @@ import { BoardWorld } from './BoardWorld';
 import { cameraPoseFor, inputCameraPose } from './cameraPresets';
 import { actionCalloutFor, anchorForState } from './sceneCallout';
 import { SCENE_NODES } from './sceneLayout';
+import { isDirectJump } from './motionState';
 
 function ActionAnchor({ point, onPosition }: {
   point: readonly [number, number, number]; onPosition: (position: { x: number; y: number }) => void;
@@ -26,13 +27,13 @@ function ActionAnchor({ point, onPosition }: {
   return null;
 }
 
-function SceneCamera({ state, overview, resetToken, reducedMotion }: {
-  state: AdditionTraceState | null; overview: boolean; resetToken: number; reducedMotion: boolean;
+function SceneCamera({ state, overview, resetToken, speed, reducedMotion }: {
+  state: AdditionTraceState | null; overview: boolean; resetToken: number; speed: number; reducedMotion: boolean;
 }) {
   const compact = useThree(({ size }) => size.width < 650);
   const narrow = useThree(({ size }) => size.width < 420);
   const pose = !state && !overview ? inputCameraPose(narrow) : cameraPoseFor(state?.cameraKey ?? 'board', compact, overview, narrow);
-  return <CameraRig position={pose.position} target={pose.target} resetToken={resetToken} reducedMotion={reducedMotion} />;
+  return <CameraRig position={pose.position} target={pose.target} resetToken={resetToken} reducedMotion={reducedMotion} transitionSeconds={1.12 / speed} />;
 }
 
 export default function Arithmetic3D({ state, displayedState, overview, resetToken, speed, reducedMotion, onContextLost, selectedInput, pressedKey, onKeyPress, onSettled }: {
@@ -46,7 +47,9 @@ export default function Arithmetic3D({ state, displayedState, overview, resetTok
   const anchor = useMemo(() => ssdInfoOpen ? [SCENE_NODES.ssd[0], 1.03, SCENE_NODES.ssd[2]] as const : anchorForState(state), [ssdInfoOpen, state]);
   const callout = ssdInfoOpen
     ? { title: 'SSD · накопитель', detail: 'Хранит данные долго. В этом сложении не участвует.' }
-    : actionCalloutFor(state, Boolean(state && displayedState && displayedState !== state));
+    : isDirectJump(displayedState, state)
+      ? { title: 'Переход к главе', detail: 'Камера меняет масштаб; данные появятся после перехода.' }
+      : actionCalloutFor(state, Boolean(state && displayedState && displayedState !== state));
   useEffect(() => setSsdInfoOpen(false), [state?.step]);
   const positionCallout = useCallback((position: { x: number; y: number }) => {
     setCalloutPosition((current) => current && Math.abs(current.x - position.x) < 1 && Math.abs(current.y - position.y) < 1 ? current : position);
@@ -60,7 +63,7 @@ export default function Arithmetic3D({ state, displayedState, overview, resetTok
   }, [onContextLost]);
   return <div className="compute-canvas" data-testid="compute-3d" ref={container}>
       <Canvas frameloop="demand" dpr={[1, 1.5]} camera={{ position: [0, 6.6, 8.5], fov: 42, near: .1, far: 80 }} gl={{ antialias: true, powerPreference: 'low-power' }}>
-      <SceneCamera state={state} overview={overview} resetToken={resetToken} reducedMotion={reducedMotion} />
+      <SceneCamera state={state} overview={overview} resetToken={resetToken} speed={speed} reducedMotion={reducedMotion} />
       <BoardWorld state={state} speed={speed} reducedMotion={reducedMotion} selectedInput={selectedInput} pressedKey={pressedKey} onKeyPress={onKeyPress} onSettled={onSettled} onInspectSsd={() => setSsdInfoOpen(true)} />
       <ActionAnchor point={anchor} onPosition={positionCallout} />
     </Canvas>

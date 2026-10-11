@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildTrace } from '../../domain/arithmetic/buildTrace';
 import { computeAddition } from '../../domain/arithmetic/computeAddition';
-import { motionForTransition } from './motionState';
+import { isDirectJump, motionForTransition } from './motionState';
 
 describe('scene motion selection', () => {
   const trace = buildTrace(computeAddition(11, 6));
@@ -16,5 +16,7 @@ describe('scene motion selection', () => {
 
   it('does not invent a signal path for direct chapter jumps', () => {
     expect(motionForTransition(trace[0], trace[7])).toEqual({ signals: [], reverse: false });
+    expect(isDirectJump(trace[0], trace[7])).toBe(true);
+    expect(isDirectJump(trace[1], trace[2])).toBe(false);
   });
 });

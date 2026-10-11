@@ -46,7 +46,11 @@ export function SignalActors({ signals, reverse, speed, reducedMotion, onSettled
   useEffect(() => {
     startedAt.current = performance.now();
     complete.current = false;
-    if (reducedMotion || routes.length === 0) {
+    if (routes.length === 0) {
+      complete.current = true;
+      return;
+    }
+    if (reducedMotion) {
       settle();
       return;
     }

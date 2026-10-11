@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Object3D, type InstancedMesh } from 'three';
-import type { AdditionTraceState } from '../../domain/arithmetic/buildTrace';
+import type { AdditionTraceState, TraceSignal } from '../../domain/arithmetic/buildTrace';
 import type { KeypadKey } from '../../components/arithmetic/keypadInput';
 import { adderPosition, CPU_FOOTPRINT, SCENE_NODES, type Point3 } from './sceneLayout';
 import { TextLabel } from './TextLabel';
 import { CarryMarker, SignalActors } from './SignalActors';
-import { motionForTransition, type TransitionMotion } from './motionState';
+import { isDirectJump, motionForTransition, type TransitionMotion } from './motionState';
 import { routeForSignal } from './signalPaths';
 import { CpuLid } from './CpuLid';
 
@@ -78,8 +78,9 @@ const cpuPins: Vec3[] = [
 ];
 const ramContacts: Vec3[] = Array.from({ length: 12 }, (_, index): Vec3 => [-.67 + index * .12, .205, .67]);
 const ramChips: Vec3[] = [-.49, -.16, .16, .49].map((x): Vec3 => [x, .245, -.53]);
+const NO_SIGNALS: readonly TraceSignal[] = Object.freeze([]);
 
-type VisualState = { target: AdditionTraceState | null; shown: AdditionTraceState | null; motion: TransitionMotion | null };
+type VisualState = { target: AdditionTraceState | null; shown: AdditionTraceState | null; motion: TransitionMotion | null; jump: boolean };
 
 export function BoardWorld({ state, speed, reducedMotion, selectedInput, pressedKey, onKeyPress, onSettled, onInspectSsd }: {
   state: AdditionTraceState | null; speed: number; reducedMotion: boolean; selectedInput: 'a' | 'b';
@@ -89,21 +90,29 @@ export function BoardWorld({ state, speed, reducedMotion, selectedInput, pressed
 }) {
   const { gl } = useThree();
   const inputActive = !state || state.activeNode === 'input';
-  const [visual, setVisual] = useState<VisualState>({ target: state, shown: state, motion: null });
+  const [visual, setVisual] = useState<VisualState>({ target: state, shown: state, motion: null, jump: false });
   useEffect(() => {
     setVisual((current) => {
       if (current.target === state && !reducedMotion) return current;
-      const motion = motionForTransition(current.target, state);
-      return reducedMotion || motion.signals.length === 0
-        ? { target: state, shown: state, motion: null }
-        : { target: state, shown: current.shown, motion };
+      const motion = motionForTransition(current.shown, state);
+      const jump = isDirectJump(current.shown, state);
+      return reducedMotion || (motion.signals.length === 0 && !jump)
+        ? { target: state, shown: state, motion: null, jump: false }
+        : { target: state, shown: current.shown, motion: motion.signals.length ? motion : null, jump };
     });
   }, [state, reducedMotion]);
   useEffect(() => {
-    if (state && visual.target === state && visual.shown === state && !visual.motion) onSettled?.(state);
+    if (!visual.jump || !state || visual.target !== state) return;
+    const timer = window.setTimeout(() => {
+      setVisual((current) => current.target === state ? { target: state, shown: state, motion: null, jump: false } : current);
+    }, 1120 / speed);
+    return () => window.clearTimeout(timer);
+  }, [state, speed, visual.jump, visual.target]);
+  useEffect(() => {
+    if (state && visual.target === state && visual.shown === state && !visual.motion && !visual.jump) onSettled?.(state);
   }, [state, visual, onSettled]);
   const onSignalsSettled = useCallback(() => {
-    setVisual((current) => current.target === state ? { ...current, shown: state, motion: null } : current);
+    setVisual((current) => current.target === state ? { ...current, shown: state, motion: null, jump: false } : current);
     if (state) onSettled?.(state);
   }, [state, onSettled]);
   const shown = visual.shown;
@@ -202,6 +211,6 @@ export function BoardWorld({ state, speed, reducedMotion, selectedInput, pressed
       <TextLabel text="ЭКРАН" position={[0, -.01, .45]} width={.95} />
     </group>
     <TextLabel text="ЛОГИЧЕСКАЯ МОДЕЛЬ, НЕ ДОРОЖКИ ПЛАТЫ" position={[-.6, -.29, 2.8]} width={4.1} color="#a9adb0" />
-    {state && visual.motion && <SignalActors key={`${visual.target?.step}-${visual.shown?.step}`} signals={visual.motion.signals} reverse={visual.motion.reverse} speed={speed} reducedMotion={reducedMotion} onSettled={onSignalsSettled} />}
+    <SignalActors signals={visual.motion?.signals ?? NO_SIGNALS} reverse={visual.motion?.reverse ?? false} speed={speed} reducedMotion={reducedMotion} onSettled={onSignalsSettled} />
   </>;
 }

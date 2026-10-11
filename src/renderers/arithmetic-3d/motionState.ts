@@ -12,3 +12,7 @@ export function motionForTransition(previous: AdditionTraceState | null, next: A
   if (next.step === previous.step - 1) return { signals: previous.signals, reverse: true };
   return { signals: [], reverse: false };
 }
+
+export function isDirectJump(previous: AdditionTraceState | null, next: AdditionTraceState | null): boolean {
+  return Boolean(previous && next && Math.abs(next.step - previous.step) > 1);
+}

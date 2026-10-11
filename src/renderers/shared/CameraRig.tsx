@@ -5,10 +5,13 @@ import { Vector3 } from 'three';
 
 type Point = readonly [number, number, number];
 
-export function CameraRig({ position, target, resetToken, reducedMotion }: { position: Point; target: Point; resetToken: number; reducedMotion: boolean }) {
+export function CameraRig({ position, target, resetToken, reducedMotion, transitionSeconds }: {
+  position: Point; target: Point; resetToken: number; reducedMotion: boolean; transitionSeconds?: number;
+}) {
   const { camera, gl, invalidate } = useThree();
   const controls = useRef<OrbitControls | null>(null);
   const destination = useRef({ position: new Vector3(...position), target: new Vector3(...target) });
+  const transition = useRef({ fromPosition: camera.position.clone(), fromTarget: new Vector3(...target), startedAt: 0 });
   const moving = useRef(false);
 
   useEffect(() => {
@@ -38,13 +41,28 @@ export function CameraRig({ position, target, resetToken, reducedMotion }: { pos
       controls.current?.update();
       moving.current = false;
     } else {
+      transition.current = {
+        fromPosition: camera.position.clone(),
+        fromTarget: controls.current?.target.clone() ?? new Vector3(...target),
+        startedAt: performance.now()
+      };
       moving.current = true;
     }
     invalidate();
-  }, [position, target, resetToken, reducedMotion, camera, invalidate]);
+  }, [position, target, resetToken, reducedMotion, transitionSeconds, camera, invalidate]);
 
   useFrame((_, delta) => {
     if (!moving.current || !controls.current) return;
+    if (transitionSeconds) {
+      const phase = Math.min(1, (performance.now() - transition.current.startedAt) / (transitionSeconds * 1000));
+      const eased = phase * phase * (3 - 2 * phase);
+      camera.position.copy(transition.current.fromPosition).lerp(destination.current.position, eased);
+      controls.current.target.copy(transition.current.fromTarget).lerp(destination.current.target, eased);
+      controls.current.update();
+      if (phase >= 1) moving.current = false;
+      else invalidate();
+      return;
+    }
     const easing = 1 - Math.exp(-Math.min(delta, 0.05) * 5);
     camera.position.lerp(destination.current.position, easing);
     controls.current.target.lerp(destination.current.target, easing);
