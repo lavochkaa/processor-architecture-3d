@@ -2,23 +2,26 @@ import type { TraceSignal } from '../../domain/arithmetic/buildTrace';
 import { adderPosition, SCENE_NODES, type Point3 } from './sceneLayout';
 
 function pointFor(name: string, signal: TraceSignal, destination: boolean): Point3 {
-  const lane = name.endsWith('-a') ? -.25 : name.endsWith('-b') ? .25 : 0;
+  const lane = name.endsWith('-a') ? -.32 : name.endsWith('-b') ? .05 : 0;
+  const registerBitOffset = !destination && signal.to.startsWith('adder-') && signal.bitIndex !== null
+    ? (1.5 - signal.bitIndex) * (1.1 / 4) : 0;
   if (name.startsWith('keyboard-')) return [SCENE_NODES.keyboard[0], .47, lane];
-  if (name.startsWith('ram-')) return [SCENE_NODES.buffer[0], .49, name === 'ram-result' ? .39 : lane];
-  if (name === 'register-a') return [SCENE_NODES.registerA[0], .49, SCENE_NODES.registerA[2]];
-  if (name === 'register-b') return [SCENE_NODES.registerB[0], .49, SCENE_NODES.registerB[2]];
+  if (name.startsWith('ram-')) return [SCENE_NODES.buffer[0], .205, name === 'ram-result' ? .39 : lane];
+  if (name === 'register-a') return [SCENE_NODES.registerA[0] + registerBitOffset, .205, SCENE_NODES.registerA[2]];
+  if (name === 'register-b') return [SCENE_NODES.registerB[0] + registerBitOffset, .205, SCENE_NODES.registerB[2]];
   if (name.startsWith('adder-')) {
     const bit = Number(name.slice(6));
     const adder = adderPosition(bit);
-    const offset = signal.shape === 'diamond' && !destination ? -.24 : 0;
-    return [adder[0] + offset, .53, signal.from === 'register-a' ? -.25 : signal.from === 'register-b' ? .25 : 0];
+    if (signal.shape === 'diamond') return [adder[0] + (destination ? .29 : -.24), .53, .55];
+    if (!destination && signal.to === 'result-register') return [adder[0] + .07, .275, .35];
+    return [adder[0] + .07, .275, signal.from === 'register-a' ? -.27 : .04];
   }
   if (name === 'carry-out') return [-.45, .53, 0];
   if (name === 'result-register') {
     const bit = signal.bitIndex;
-    return [SCENE_NODES.result[0] + (bit === null ? 0 : (2 - bit) * .29), .48, 0];
+    return [SCENE_NODES.result[0] + (bit === null ? 0 : (2 - bit) * (1.47 / 5)), .205, 0];
   }
-  if (name === 'screen') return [SCENE_NODES.screen[0], .8, 0];
+  if (name === 'screen') return [SCENE_NODES.screen[0], .45, .04];
   throw new RangeError(`Unknown signal endpoint: ${name}`);
 }
 

@@ -116,6 +116,9 @@ export function BoardWorld({ state, speed, reducedMotion, selectedInput, pressed
     if (state) onSettled?.(state);
   }, [state, onSettled]);
   const shown = visual.shown;
+  // During rewind the landing glyph becomes the departing glyph. Keep its
+  // permanent copy hidden until the earlier trace state takes over.
+  const reversingFrom = new Set(visual.motion?.reverse ? visual.motion.signals.map((signal) => signal.to) : []);
   const rearRoute = routeForSignal({ shape: 'packet', from: 'result-register', to: 'ram-result', bitIndex: null, value: null, label: 'Σ', bits: '00000' });
   const screenRoute = routeForSignal({ shape: 'packet', from: 'ram-result', to: 'screen', bitIndex: null, value: null, label: 'Σ', bits: '00000' });
   return <>
@@ -158,9 +161,11 @@ export function BoardWorld({ state, speed, reducedMotion, selectedInput, pressed
     <Module position={SCENE_NODES.buffer} size={[1.55, 1.35]} active={state?.activeNode === 'ram-operands' || state?.activeNode === 'ram-result'}>
       <InstancedPads positions={ramContacts} size={[.075, .02, .16]} color="#c4c6c2" />
       <InstancedPads positions={ramChips} size={[.23, .09, .19]} color="#151719" />
-      <group position={[0, 0, -.32]}><BitStrip value={shown?.memory.aBits ?? null} /></group>
-      <group position={[0, 0, .05]}><BitStrip value={shown?.memory.bBits ?? null} /></group>
-      <group position={[0, 0, .39]}><BitStrip value={shown?.memory.resultBits ?? null} width={1.27} /></group>
+      {[-.32, .05, .39].map((z) => <mesh key={z} position={[0, .165, z]}><boxGeometry args={[1.28, .018, .32]} /><meshStandardMaterial color="#889094" metalness={.65} roughness={.35} /></mesh>)}
+      <group position={[0, 0, -.32]}><BitStrip value={reversingFrom.has('ram-a') ? null : shown?.memory.aBits ?? null} /></group>
+      <group position={[0, 0, .05]}><BitStrip value={reversingFrom.has('ram-b') ? null : shown?.memory.bBits ?? null} /></group>
+      <group position={[0, 0, .39]}><BitStrip value={reversingFrom.has('ram-result') ? null : shown?.memory.resultBits ?? null} width={1.27} /></group>
+      {([['A', -.32], ['B', .05], ['Σ', .39]] as const).map(([label, z]) => <TextLabel key={label} text={label} position={[.66, .27, z]} width={.16} />)}
       <TextLabel text="RAM / A · B · РЕЗУЛЬТАТ" position={[0, .27, .64]} width={1.5} />
     </Module>
     <group onClick={(event) => { event.stopPropagation(); onInspectSsd(); }}>
@@ -171,11 +176,15 @@ export function BoardWorld({ state, speed, reducedMotion, selectedInput, pressed
     </Module>
     </group>
     <Module position={SCENE_NODES.registerA} size={[1.55, .7]} active={state?.activeNode === 'registers'}>
-      <BitStrip value={shown?.registers.aBits ?? null} />
+      <mesh position={[-.71, .21, 0]}><cylinderGeometry args={[.06, .06, .11, 12]} /><meshStandardMaterial color="#d2d6d7" metalness={.75} roughness={.25} /></mesh>
+      <mesh position={[.71, .21, 0]}><cylinderGeometry args={[.06, .06, .11, 12]} /><meshStandardMaterial color="#d2d6d7" metalness={.75} roughness={.25} /></mesh>
+      <BitStrip value={reversingFrom.has('register-a') ? null : shown?.registers.aBits ?? null} />
       <TextLabel text="РЕГИСТР A" position={[0, .27, .29]} width={1.05} />
     </Module>
     <Module position={SCENE_NODES.registerB} size={[1.55, .7]} active={state?.activeNode === 'registers'}>
-      <BitStrip value={shown?.registers.bBits ?? null} />
+      <mesh position={[-.71, .21, 0]}><cylinderGeometry args={[.06, .06, .11, 12]} /><meshStandardMaterial color="#d2d6d7" metalness={.75} roughness={.25} /></mesh>
+      <mesh position={[.71, .21, 0]}><cylinderGeometry args={[.06, .06, .11, 12]} /><meshStandardMaterial color="#d2d6d7" metalness={.75} roughness={.25} /></mesh>
+      <BitStrip value={reversingFrom.has('register-b') ? null : shown?.registers.bBits ?? null} />
       <TextLabel text="РЕГИСТР B" position={[0, .27, .29]} width={1.05} />
     </Module>
 
@@ -186,28 +195,36 @@ export function BoardWorld({ state, speed, reducedMotion, selectedInput, pressed
       return <Module key={bit} position={position} size={[.58, 1.15]} active={state?.activeBit === bit}>
         <TextLabel text={`FA${bit}`} position={[0, .32, -.52]} width={.39} />
         {([
-          ['A', shown?.registers.aBits?.[3 - bit] ?? '?', -.27],
-          ['B', shown?.registers.bBits?.[3 - bit] ?? '?', .04],
+          ['A', shown && shown.step >= bit + 4 && !reversingFrom.has(`adder-${bit}`) ? shown.registers.aBits?.[3 - bit] ?? '?' : '?', -.27],
+          ['B', shown && shown.step >= bit + 4 && !reversingFrom.has(`adder-${bit}`) ? shown.registers.bBits?.[3 - bit] ?? '?' : '?', .04],
           ['Σ', shown?.table.sum[bit] == null ? '?' : String(shown.table.sum[bit]), .35]
         ] as const).map(([label, value, z]) => <group key={label}>
           <TextLabel text={label} position={[-.18, .3, z]} width={.16} />
           <group position={[.07, .05, z]}><BitStrip value={value} width={.23} /></group>
         </group>)}
         {[-.27, .04, .35].map((z) => <mesh key={z} position={[-.29, .2, z]}><cylinderGeometry args={[.028, .028, .08, 8]} /><meshStandardMaterial color="#c3c5c6" metalness={.8} roughness={.25} /></mesh>)}
+        <TextLabel text={`c${bit}`} position={[.18, .28, .54]} width={.2} compact />
+        <TextLabel text={`c${bit + 1}`} position={[-.19, .28, .54]} width={.22} compact />
+        <mesh position={[.25, .19, .55]}><cylinderGeometry args={[.038, .038, .12, 10]} /><meshStandardMaterial color="#cfd4d5" metalness={.8} roughness={.27} /></mesh>
+        <mesh position={[-.25, .19, .55]}><cylinderGeometry args={[.038, .038, .12, 10]} /><meshStandardMaterial color="#cfd4d5" metalness={.8} roughness={.27} /></mesh>
       </Module>;
     })}
 
-    {shown?.activeBit != null && shown.carryIn !== null && <CarryMarker value={shown.carryIn} position={[adderPosition(shown.activeBit)[0] + .3, .52, .55]} />}
-    {shown?.activeBit != null && shown.carryOut !== null && <CarryMarker value={shown.carryOut} position={[adderPosition(shown.activeBit)[0] - .3, .52, .55]} />}
+    {shown?.table.carry.map((value, index) => value === null || (index > 0 && reversingFrom.has(index === 4 ? 'carry-out' : `adder-${index}`)) ? null :
+      <CarryMarker key={index} value={value} label={`c${index}`} position={index === 4 ? [-.45, .53, 0] : [adderPosition(index)[0] + .29, .53, .55]} />)}
 
     <Module position={SCENE_NODES.result} size={[1.78, .82]} active={state?.activeNode === 'result-register'}>
-      <BitStrip value={shown?.registers.resultBits ?? null} width={1.47} />
+      <mesh position={[-.8, .21, 0]}><cylinderGeometry args={[.065, .065, .11, 12]} /><meshStandardMaterial color="#d2d6d7" metalness={.75} roughness={.25} /></mesh>
+      <mesh position={[.8, .21, 0]}><cylinderGeometry args={[.065, .065, .11, 12]} /><meshStandardMaterial color="#d2d6d7" metalness={.75} roughness={.25} /></mesh>
+      <BitStrip value={reversingFrom.has('result-register') ? null : shown?.registers.resultBits ?? null} width={1.47} />
       <TextLabel text="РЕГИСТР РЕЗУЛЬТАТА / 5 БИТ" position={[0, .27, .34]} width={1.7} />
     </Module>
     <group position={[SCENE_NODES.screen[0], 0, SCENE_NODES.screen[2]]}>
+      <mesh position={[0, -.24, -.16]}><boxGeometry args={[.56, .09, .53]} /><meshStandardMaterial color="#838a8d" metalness={.57} roughness={.42} /></mesh>
+      <mesh position={[0, -.07, -.11]}><boxGeometry args={[.1, .35, .12]} /><meshStandardMaterial color="#838a8d" metalness={.57} roughness={.42} /></mesh>
       <mesh position={[0, .42, -.08]}><boxGeometry args={[1.42, 1.2, .2]} /><meshStandardMaterial color={state?.activeNode === 'screen' ? '#66696b' : '#343639'} metalness={.45} roughness={.55} /></mesh>
       <mesh position={[0, .43, .025]}><planeGeometry args={[1.24, .96]} /><meshBasicMaterial color="#111315" /></mesh>
-      {shown?.screenValue != null && <TextLabel text={String(shown.screenValue)} position={[0, .45, .038]} width={.9} vertical compact />}
+      {shown?.screenValue != null && !reversingFrom.has('screen') && <TextLabel text={String(shown.screenValue)} position={[0, .45, .038]} width={.9} vertical compact />}
       <TextLabel text="ЭКРАН" position={[0, -.01, .45]} width={.95} />
     </group>
     <TextLabel text="ЛОГИЧЕСКАЯ МОДЕЛЬ, НЕ ДОРОЖКИ ПЛАТЫ" position={[-.6, -.29, 2.8]} width={4.1} color="#a9adb0" />

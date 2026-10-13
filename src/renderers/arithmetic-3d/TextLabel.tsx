@@ -3,8 +3,8 @@ import { CanvasTexture, SRGBColorSpace } from 'three';
 
 type Vec3 = [number, number, number];
 
-export function TextLabel({ text, position, width = 1, color = '#f1f1ef', vertical = false, compact = false }: {
-  text: string; position: Vec3; width?: number; color?: string; vertical?: boolean; compact?: boolean;
+export function TextLabel({ text, position, width = 1, color = '#f1f1ef', vertical = false, compact = false, opacity = 1 }: {
+  text: string; position: Vec3; width?: number; color?: string; vertical?: boolean; compact?: boolean; opacity?: number;
 }) {
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas');
@@ -28,6 +28,6 @@ export function TextLabel({ text, position, width = 1, color = '#f1f1ef', vertic
   useEffect(() => () => texture.dispose(), [texture]);
   return <mesh position={position} rotation={vertical ? [0, 0, 0] : [-Math.PI / 2, 0, 0]}>
     <planeGeometry args={[width, width * (compact ? .5 : .125)]} />
-    <meshBasicMaterial map={texture} transparent depthWrite={false} />
+    <meshBasicMaterial map={texture} transparent opacity={opacity} depthWrite={false} />
   </mesh>;
 }

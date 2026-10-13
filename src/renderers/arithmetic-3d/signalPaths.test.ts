@@ -24,6 +24,24 @@ describe('3D signal paths', () => {
     }
   });
 
+  it('lands operand packets at the visible RAM and register bit cells', () => {
+    const trace = buildTrace(computeAddition(11, 6));
+    expect(resolveSignalPath(trace[1].signals[0])[1]).toEqual([-3.45, .205, -.32]);
+    expect(resolveSignalPath(trace[1].signals[1])[1]).toEqual([-3.45, .205, .05]);
+    expect(resolveSignalPath(trace[2].signals[0])[1]).toEqual([-1.55, .205, -1.05]);
+    expect(resolveSignalPath(trace[2].signals[1])[1]).toEqual([-1.55, .205, 1.05]);
+  });
+
+  it('takes each ALU operand from its actual register bit cell', () => {
+    const trace = buildTrace(computeAddition(11, 6));
+    const [a] = resolveSignalPath(trace[3].signals[0]);
+    const [b] = resolveSignalPath(trace[6].signals[1]);
+    expect(a[0]).toBeCloseTo(-1.55 + .4125);
+    expect(b[0]).toBeCloseTo(-1.55 - .4125);
+    expect(a.slice(1)).toEqual([.205, -1.05]);
+    expect(b.slice(1)).toEqual([.205, 1.05]);
+  });
+
   it('does not create a moving diamond for a zero carry', () => {
     const trace = buildTrace(computeAddition(11, 6));
     expect(trace[3].carryIn).toBe(0);
