@@ -52,7 +52,23 @@ export default function Arithmetic3D({ state, displayedState, overview, resetTok
       : actionCalloutFor(state, Boolean(state && displayedState && displayedState !== state));
   useEffect(() => setSsdInfoOpen(false), [state?.step]);
   const positionCallout = useCallback((position: { x: number; y: number }) => {
-    setCalloutPosition((current) => current && Math.abs(current.x - position.x) < 1 && Math.abs(current.y - position.y) < 1 ? current : position);
+    const stage = container.current?.parentElement;
+    const panel = stage?.querySelector<HTMLElement>('.compute-panel, .compute-input-panel');
+    const bubble = container.current?.querySelector<HTMLElement>('.compute-node-callout');
+    const { x } = position;
+    let { y } = position;
+    if (stage && panel) {
+      const stageBox = stage.getBoundingClientRect();
+      const panelBox = panel.getBoundingClientRect();
+      const bubbleWidth = bubble?.offsetWidth ?? 270;
+      const bubbleHeight = bubble?.offsetHeight ?? 64;
+      const panelLeft = panelBox.left - stageBox.left;
+      const panelRight = panelBox.right - stageBox.left;
+      if (x + bubbleWidth / 2 > panelLeft && x - bubbleWidth / 2 < panelRight) {
+        y = Math.max(y, panelBox.bottom - stageBox.top + bubbleHeight + 23);
+      }
+    }
+    setCalloutPosition((current) => current && Math.abs(current.x - x) < 1 && Math.abs(current.y - y) < 1 ? current : { x, y });
   }, []);
   useEffect(() => {
     const canvas = container.current?.querySelector('canvas');

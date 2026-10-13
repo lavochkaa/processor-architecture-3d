@@ -1,8 +1,8 @@
 ---
 import '../styles/global.css';
 
-interface Props { title: string; description: string; }
-const { title, description } = Astro.props;
+interface Props { title: string; description: string; immersive?: boolean; }
+const { title, description, immersive = false } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site).toString();
 ---
 <!doctype html>
@@ -19,12 +19,13 @@ const canonical = new URL(Astro.url.pathname, Astro.site).toString();
     <link rel="canonical" href={canonical} />
     <title>{title} — Архитектура процессора</title>
   </head>
-  <body>
+  <body class={immersive ? 'immersive-compute' : undefined}>
     <a class="skip-link" href="#main">Перейти к содержимому</a>
     <header class="site-header">
       <div class="container header-inner">
         <a class="brand" href="/" aria-label="Архитектура процессора, главная"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>АРХИТЕКТУРА<br /><strong>ПРОЦЕССОРА</strong></span></a>
         <nav aria-label="Основная навигация"><a href="/compute/">Сложение</a><a href="/scenario/">Путь клавиши</a><a href="/glossary/">Глоссарий</a><a href="/boundaries/">Границы модели</a><a href="/sources/">Источники</a></nav>
+        {immersive && <details class="compute-site-menu"><summary>Разделы</summary><nav aria-label="Разделы сайта"><a href="/compute/">Сложение</a><a href="/scenario/">Путь клавиши</a><a href="/glossary/">Глоссарий</a><a href="/boundaries/">Границы модели</a><a href="/sources/">Источники</a></nav></details>}
         <span class="header-edition">УЧЕБНАЯ МОДЕЛЬ <b>01 / 08</b></span>
       </div>
     </header>

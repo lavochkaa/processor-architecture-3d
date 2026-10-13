@@ -3,9 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import ComputeApp from './ComputeApp';
 
-vi.mock('../../domain/capabilities/capabilities', () => ({ canCreateWebGLContext: () => false }));
+const { webglEnabled } = vi.hoisted(() => ({ webglEnabled: { current: false } }));
+vi.mock('../../domain/capabilities/capabilities', () => ({ canCreateWebGLContext: () => webglEnabled.current }));
+vi.mock('../../renderers/arithmetic-3d/Arithmetic3D', () => ({
+  default: ({ state, onSettled }: { state: { step: number } | null; onSettled: (state: { step: number }) => void }) =>
+    <button type="button" onClick={() => state && onSettled(state)}>Закрепить шаг {state?.step ?? 0}</button>
+}));
 
 beforeEach(() => {
+  webglEnabled.current = false;
   vi.stubGlobal('matchMedia', () => ({
     matches: false,
     addEventListener: () => undefined,
@@ -68,5 +74,51 @@ describe('ComputeApp', () => {
     expect(table.querySelectorAll('tbody tr')[2].querySelector('td')?.textContent).toBe('—');
     expect(table.querySelectorAll('tbody tr')[0].querySelector('td:last-child')?.textContent).toBe('0');
     expect(table.querySelectorAll('tbody tr')[3].querySelectorAll('td')[1].textContent).toBe('?');
+  });
+
+  it('keeps only the latest navigation command while a 3D transfer is docking', async () => {
+    webglEnabled.current = true;
+    render(<ComputeApp />);
+    fireEvent.click(screen.getByRole('button', { name: 'Показать вычисление' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Закрепить шаг 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Дальше' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Дальше' }));
+    expect(screen.getByRole('button', { name: 'Закрепить шаг 2' })).toBeTruthy();
+    expect(screen.getByText('Команда ожидает закрепления')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Закрепить шаг 2' }));
+    expect(screen.getByRole('button', { name: 'Закрепить шаг 3' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Закрепить шаг 3' }));
+    expect(screen.getByText('Шаг 3 из 10')).toBeTruthy();
+  });
+
+  it('keeps input and playback widgets inside the scene and collapses the table on narrow screens', () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(max-width: 760px)',
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined
+    }));
+    render(<ComputeApp />);
+    const stage = screen.getByTestId('compute-stage');
+    expect(stage.contains(screen.getByRole('button', { name: 'Показать вычисление' }))).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Показать вычисление' }));
+    expect(stage.contains(screen.getByRole('button', { name: 'Дальше' }))).toBe(true);
+    expect(stage.contains(screen.getByRole('button', { name: 'Воспроизвести' }))).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: /ALU/ }));
+    expect(screen.getByRole('button', { name: 'Развернуть' })).toBeTruthy();
+  });
+
+  it('discards a queued move when the user changes the numbers', async () => {
+    webglEnabled.current = true;
+    render(<ComputeApp />);
+    fireEvent.click(screen.getByRole('button', { name: 'Показать вычисление' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Закрепить шаг 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Дальше' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Дальше' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Изменить числа' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Показать вычисление' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Закрепить шаг 1' }));
+    expect(screen.getByText('Шаг 1 из 10')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Закрепить шаг 2' })).toBeNull();
+    expect(screen.queryByText('Команда ожидает закрепления')).toBeNull();
   });
 });

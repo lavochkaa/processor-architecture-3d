@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useReducer, useRef, useState, type KeyboardEvent, type SyntheticEvent } from 'react';
 import { CHAPTER_LABELS, formatAnnouncement } from '../../content/arithmetic/copy';
 import type { AdditionTraceState, ChapterKey } from '../../domain/arithmetic/buildTrace';
-import { createControllerState, currentTraceState, reduceController, type PlaybackSpeed } from '../../domain/arithmetic/controller';
+import { createControllerState, currentTraceState, reduceController, type ControllerAction, type PlaybackSpeed } from '../../domain/arithmetic/controller';
 import { OPERAND_ERROR, parseOperand } from '../../domain/arithmetic/parseOperand';
 import { canCreateWebGLContext } from '../../domain/capabilities/capabilities';
 import { AdditionPanel } from './AdditionPanel';
@@ -30,6 +30,9 @@ export default function ComputeApp() {
   const [flatMode, setFlatMode] = useState(false);
   const [cameraResetToken, setCameraResetToken] = useState(0);
   const [presentedState, setPresentedState] = useState<AdditionTraceState | null>(null);
+  const [hasQueuedNavigation, setHasQueuedNavigation] = useState(false);
+  const navigationBusy = useRef(false);
+  const queuedNavigation = useRef<ControllerAction | null>(null);
   const aRef = useRef<HTMLInputElement>(null);
   const bRef = useRef<HTMLInputElement>(null);
   const state = currentTraceState(controller);
@@ -37,10 +40,43 @@ export default function ComputeApp() {
   const bError = touched.b && parseOperand(bInput) === null;
   const showing3D = webgl === true && !flatMode;
   const synchronizedState = showing3D && state ? presentedState ?? state : state;
-  const handleContextLost = useCallback(() => { setWebgl(false); setFlatMode(true); }, []);
+  const clearNavigation = useCallback(() => {
+    navigationBusy.current = false;
+    queuedNavigation.current = null;
+    setHasQueuedNavigation(false);
+  }, []);
+  const handleContextLost = useCallback(() => { clearNavigation(); setWebgl(false); setFlatMode(true); }, [clearNavigation]);
+  const navigate = useCallback((action: ControllerAction) => {
+    const next = reduceController(controller, action);
+    if (!showing3D || reducedMotion || !next.trace) {
+      clearNavigation();
+      dispatch(action);
+      return;
+    }
+    if (next.stepIndex === controller.stepIndex) {
+      dispatch(action);
+      return;
+    }
+    if (navigationBusy.current) {
+      queuedNavigation.current = action;
+      setHasQueuedNavigation(true);
+      return;
+    }
+    navigationBusy.current = true;
+    dispatch(action);
+  }, [controller, showing3D, reducedMotion, clearNavigation]);
   const handleSceneSettled = useCallback((settled: AdditionTraceState) => {
-    if (state === settled) setPresentedState(settled);
-  }, [state]);
+    if (state !== settled) return;
+    setPresentedState(settled);
+    navigationBusy.current = false;
+    const queued = queuedNavigation.current;
+    if (!queued) return;
+    queuedNavigation.current = null;
+    setHasQueuedNavigation(false);
+    const next = reduceController(controller, queued);
+    if (showing3D && !reducedMotion && next.trace && next.stepIndex !== controller.stepIndex) navigationBusy.current = true;
+    dispatch(queued);
+  }, [state, controller, showing3D, reducedMotion]);
 
   useEffect(() => setWebgl(canCreateWebGLContext()), []);
 
@@ -54,9 +90,9 @@ export default function ComputeApp() {
 
   useEffect(() => {
     if (!controller.playing) return;
-    const timer = window.setTimeout(() => dispatch({ type: 'tick' }), 1600 / controller.speed);
+    const timer = window.setTimeout(() => navigate({ type: 'tick' }), 1600 / controller.speed);
     return () => window.clearTimeout(timer);
-  }, [controller.playing, controller.stepIndex, controller.speed]);
+  }, [controller.playing, controller.stepIndex, controller.speed, navigate]);
 
   useEffect(() => setOverviewOverride(false), [state?.cameraKey]);
 
@@ -103,7 +139,8 @@ export default function ComputeApp() {
       (a === null ? aRef : bRef).current?.focus();
       return;
     }
-    setTableCollapsed(false);
+    setTableCollapsed(window.matchMedia('(max-width: 760px)').matches);
+    clearNavigation();
     dispatch({ type: 'start', a, b });
   }
 
@@ -114,11 +151,12 @@ export default function ComputeApp() {
     const current = CHAPTERS.indexOf(event.target.dataset.chapter as ChapterKey);
     if (current < 0) return;
     const next = Math.max(0, Math.min(CHAPTERS.length - 1, current + (event.key === 'ArrowRight' ? 1 : -1)));
-    dispatch({ type: 'jump-chapter', chapter: CHAPTERS[next] });
+    navigate({ type: 'jump-chapter', chapter: CHAPTERS[next] });
     event.currentTarget.querySelectorAll<HTMLButtonElement>('button')[next]?.focus();
   }
 
   return <section className="compute-app" aria-label="Симуляция сложения двух чисел">
+    <div className={`compute-viewport${showing3D ? ' has-3d' : ''}`} data-testid="compute-stage" data-presented-step={synchronizedState?.step ?? undefined} data-overview={overviewOverride ? 'true' : undefined} data-table-expanded={tableCollapsed ? undefined : 'true'}>
     {!state ? <header className="compute-input-panel">
       <div className="compute-panel-top"><span className="compute-eyebrow">ЛОГИЧЕСКАЯ МОДЕЛЬ / ВВОД</span><span>ЧЕТЫРЕ БИТА НА ОПЕРАНД</span></div>
       <div className="compute-input-layout">
@@ -132,29 +170,28 @@ export default function ComputeApp() {
           <button className="button button-primary" type="submit">Показать вычисление</button>
         </form>
       </div>
-    </header> : <AdditionPanel state={synchronizedState ?? state} onEdit={() => dispatch({ type: 'edit' })} onOverview={() => setOverviewOverride(true)} />}
+    </header> : <AdditionPanel state={synchronizedState ?? state} onEdit={() => { clearNavigation(); dispatch({ type: 'edit' }); }} onOverview={() => setOverviewOverride(true)} />}
 
-    <div className={`compute-viewport${showing3D ? ' has-3d' : ''}`} data-testid="compute-stage" data-presented-step={synchronizedState?.step ?? undefined} data-overview={overviewOverride ? 'true' : undefined}>
       {showing3D ? <>
         <Suspense fallback={<div className="compute-3d-loading">Загрузка объёмной модели…</div>}><Arithmetic3D state={state} displayedState={synchronizedState} overview={overviewOverride} resetToken={cameraResetToken} speed={controller.speed} reducedMotion={reducedMotion} onContextLost={handleContextLost} selectedInput={selectedInput} pressedKey={pressedKey} onKeyPress={pressSceneKey} onSettled={handleSceneSettled} /></Suspense>
         {state && <div className="compute-sr-route"><FlatRoute state={state} /></div>}
       </> : state ? <FlatRoute state={state} /> : <div className="compute-empty-state"><div className="compute-empty-mark">A <span>+</span> B <span>→</span> Σ</div><p>RAM · CPU · четыре полных сумматора · десять шагов</p><span>После запуска значения пройдут по учебному маршруту</span></div>}
       {synchronizedState && (synchronizedState.chapter === 'alu' || synchronizedState.chapter === 'result') && <AdditionTable state={synchronizedState} collapsed={tableCollapsed} onToggle={() => setTableCollapsed((value) => !value)} />}
-      <div className="compute-viewport-footer"><span>▰ ЗНАЧЕНИЕ &nbsp; ◆ ПЕРЕНОС</span><span>{webgl === false ? 'WEBGL НЕДОСТУПЕН · ПЛОСКИЙ ПУТЬ' : reducedMotion ? 'МГНОВЕННЫЕ ПЕРЕХОДЫ' : 'РУЧНОЙ РЕЖИМ ПО УМОЛЧАНИЮ'}</span>{showing3D && <button type="button" onClick={() => { setOverviewOverride(false); setCameraResetToken((value) => value + 1); }}>Вернуть камеру</button>}{state && webgl === true && <button type="button" onClick={() => setFlatMode((value) => !value)}>{flatMode ? 'Показать 3D' : 'Плоский вид'}</button>}</div>
-    </div>
-
+      <div className="compute-viewport-footer"><span>▰ ЗНАЧЕНИЕ &nbsp; ◆ ПЕРЕНОС</span><span>{webgl === false ? 'WEBGL НЕДОСТУПЕН · ПЛОСКИЙ ПУТЬ' : reducedMotion ? 'МГНОВЕННЫЕ ПЕРЕХОДЫ' : 'РУЧНОЙ РЕЖИМ ПО УМОЛЧАНИЮ'}</span>{showing3D && <button type="button" onClick={() => { setOverviewOverride(false); setCameraResetToken((value) => value + 1); }}>Вернуть камеру</button>}{state && webgl === true && <button type="button" onClick={() => { clearNavigation(); setFlatMode((value) => !value); }}>{flatMode ? 'Показать 3D' : 'Плоский вид'}</button>}</div>
     {state && <div className="compute-controls">
       <div className="compute-chapters" role="toolbar" aria-label="Главы вычисления" onKeyDown={chapterKeyDown}>
-        {CHAPTERS.map((chapter) => <button key={chapter} type="button" data-chapter={chapter} className={state.chapter === chapter ? 'is-current' : ''} aria-current={state.chapter === chapter ? 'step' : undefined} onClick={() => dispatch({ type: 'jump-chapter', chapter })}><span>{CHAPTER_LABELS[chapter]}</span><small>{CHAPTER_RANGES[chapter]}</small></button>)}
+        {CHAPTERS.map((chapter) => <button key={chapter} type="button" data-chapter={chapter} className={state.chapter === chapter ? 'is-current' : ''} aria-current={state.chapter === chapter ? 'step' : undefined} onClick={() => navigate({ type: 'jump-chapter', chapter })}><span>{CHAPTER_LABELS[chapter]}</span><small>{CHAPTER_RANGES[chapter]}</small></button>)}
       </div>
       <div className="compute-controls-row">
-        <button className="button button-ghost" type="button" onClick={() => dispatch({ type: 'previous' })}>Назад</button>
-        <button className="button button-primary" type="button" disabled={state.step === 10} onClick={() => dispatch({ type: 'next' })}>Дальше</button>
+        <button className="button button-ghost" type="button" onClick={() => navigate({ type: 'previous' })}>Назад</button>
+        <button className="button button-primary" type="button" disabled={state.step === 10} onClick={() => navigate({ type: 'next' })}>Дальше</button>
         <span className="compute-controls-spacer" />
         <button className="button button-ghost" type="button" onClick={() => dispatch({ type: controller.playing ? 'pause' : 'play' })} disabled={state.step === 10 && !controller.playing}>{controller.playing ? 'Пауза' : 'Воспроизвести'}</button>
         <label className="compute-speed">Скорость <select value={controller.speed} onChange={(event) => dispatch({ type: 'speed', speed: Number(event.target.value) as PlaybackSpeed })}><option value="0.5">0.5×</option><option value="1">1×</option><option value="2">2×</option></select></label>
       </div>
+      {hasQueuedNavigation && <span className="compute-queued" role="status">Команда ожидает закрепления</span>}
     </div>}
+    </div>
     <p className="compute-boundary">Это логическая модель четырёхразрядного сумматора, а не тактовая или электрическая эмуляция конкретного процессора. Путь импульсов не повторяет физические дорожки платы.</p>
     <div className="compute-live" aria-live="polite" aria-atomic="true">{formatAnnouncement(controller.announcement, controller.trace)}</div>
   </section>;

@@ -3,14 +3,15 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import ComputeApp from '../components/arithmetic/ComputeApp';
 import '../styles/compute.css';
 ---
-<BaseLayout title="Как машина складывает числа" description="Интерактивная логическая модель: два числа проходят через RAM и CPU к пятибитному результату за десять шагов.">
+<BaseLayout title="Как машина складывает числа" description="Интерактивная логическая модель: два числа проходят через RAM и CPU к пятибитному результату за десять шагов." immersive>
   <div class="compute-page">
+    <h1 class="compute-sr-route">Как машина складывает числа?</h1>
+    <ComputeApp client:only="react" />
     <section class="container compute-intro">
       <div class="eyebrow">ИНТЕРАКТИВНАЯ МОДЕЛЬ / ДВОИЧНОЕ СЛОЖЕНИЕ</div>
-      <h1>Как машина <em>складывает</em> числа?</h1>
+      <h2>Как машина <em>складывает</em> числа?</h2>
       <p>Введите два числа от 0 до 15. Проследите, как они проходят через RAM и отдельный процессор с регистрами и четырьмя сумматорами ALU, возвращаются в память и появляются на экране.</p>
     </section>
-    <div class="container compute-container"><ComputeApp client:only="react" /></div>
     <section class="container compute-static">
       <details>
         <summary>Текстовый разбор примера 11 + 6 без JavaScript <span aria-hidden="true">↗</span></summary>
