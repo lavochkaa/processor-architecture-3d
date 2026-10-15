@@ -60,7 +60,7 @@ test('shows a compact action window above the active component', async ({ page }
   await page.getByRole('button', { name: 'Показать вычисление' }).click();
   await page.getByRole('button', { name: 'Дальше' }).click();
   await expect(callout).toContainText('RAM');
-  await page.getByRole('button', { name: 'ALU 4–7' }).click();
+  await page.getByRole('button', { name: /^ALU(?:\s|$)/ }).click();
   await expect(callout).toContainText('ALU · сумматор 0');
 });
 
@@ -85,7 +85,7 @@ test('moves the five-bit answer from CPU to RAM before showing it on the screen'
   if (!await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')))) test.skip(true, 'WebGL is unavailable');
   await page.getByRole('button', { name: 'Показать вычисление' }).click();
   await expect(page.getByTestId('compute-3d').locator('canvas')).toBeVisible();
-  await page.getByRole('button', { name: 'Результат 8–10' }).click();
+  await page.getByRole('button', { name: /^Результат(?:\s|$)/ }).click();
   await page.getByLabel('Скорость').selectOption('0.5');
   const stage = page.getByTestId('compute-stage');
   await expect(stage).toHaveAttribute('data-presented-step', '8');
@@ -106,7 +106,7 @@ test('chapter jumps keep the prior data visible during the camera move', async (
   await expect(page.locator('.compute-node-callout')).toContainText('Ввод');
   await page.getByLabel('Скорость').selectOption('0.5');
   const stage = page.getByTestId('compute-stage');
-  await page.getByRole('button', { name: 'ALU 4–7' }).click();
+  await page.getByRole('button', { name: /^ALU(?:\s|$)/ }).click();
   await expect(stage).toHaveAttribute('data-presented-step', '1');
   await expect(page.locator('.compute-node-callout')).toContainText('Переход к главе');
   await expect(stage).toHaveAttribute('data-presented-step', '4', { timeout: 5000 });
@@ -132,13 +132,13 @@ test('camera scale follows ALU and result chapters, with overview and reset cont
   const webglAvailable = await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')));
   if (!webglAvailable) test.skip(true, 'WebGL is unavailable in this browser');
   await page.getByRole('button', { name: 'Показать вычисление' }).click();
-  await page.getByRole('button', { name: 'ALU 4–7' }).click();
+  await page.getByRole('button', { name: /^ALU(?:\s|$)/ }).click();
   await expect(page.getByRole('navigation', { name: 'Масштаб сцены' })).toContainText('ALU');
   await page.getByRole('button', { name: 'Плата', exact: true }).click();
   await expect(page.getByTestId('compute-stage')).toHaveAttribute('data-overview', 'true');
   await page.getByRole('button', { name: 'Вернуть камеру' }).click();
   await expect(page.getByTestId('compute-stage')).not.toHaveAttribute('data-overview');
-  await page.getByRole('button', { name: 'Результат 8–10' }).click();
+  await page.getByRole('button', { name: /^Результат(?:\s|$)/ }).click();
   await expect(page.getByRole('navigation', { name: 'Масштаб сцены' })).toContainText('Результат');
 });
 
@@ -147,11 +147,14 @@ test('keeps the action window inside a 360px scene without covering the addition
   await page.goto('/compute/');
   if (!await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')))) test.skip(true, 'WebGL is unavailable');
   await page.getByRole('button', { name: 'Показать вычисление' }).click();
-  await page.getByRole('button', { name: 'ALU 4–7' }).click();
+  await page.getByRole('button', { name: /^ALU(?:\s|$)/ }).click();
   const callout = page.locator('.compute-node-callout');
   await expect(callout).toContainText('ALU');
+  const table = page.getByRole('table');
+  await page.getByRole('button', { name: 'Развернуть' }).click();
+  await expect(table).toBeVisible();
   const windowBox = await callout.boundingBox();
-  const tableBox = await page.getByRole('table').boundingBox();
+  const tableBox = await table.boundingBox();
   expect(windowBox).not.toBeNull();
   expect(tableBox).not.toBeNull();
   expect(windowBox!.x).toBeGreaterThanOrEqual(0);
@@ -167,7 +170,7 @@ test('lost WebGL context retains the current ALU step and switches to the flat r
   await page.goto('/compute/');
   if (!await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')))) test.skip(true, 'WebGL is unavailable');
   await page.getByRole('button', { name: 'Показать вычисление' }).click();
-  await page.getByRole('button', { name: 'ALU 4–7' }).click();
+  await page.getByRole('button', { name: /^ALU(?:\s|$)/ }).click();
   const canvas = page.getByTestId('compute-3d').locator('canvas');
   await expect(canvas).toBeVisible();
   const lost = await canvas.evaluate((element) => {
@@ -187,7 +190,7 @@ test('reduced motion keeps manual 3D navigation and instant transitions', async 
   await page.goto('/compute/');
   if (!await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')))) test.skip(true, 'WebGL is unavailable');
   await page.getByRole('button', { name: 'Показать вычисление' }).click();
-  await page.getByRole('button', { name: 'ALU 4–7' }).click();
+  await page.getByRole('button', { name: /^ALU(?:\s|$)/ }).click();
   await expect(page.getByText('МГНОВЕННЫЕ ПЕРЕХОДЫ')).toBeVisible();
   await expect(page.getByTestId('compute-3d').locator('canvas')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Воспроизвести' })).toBeEnabled();
@@ -197,7 +200,7 @@ test('demand renderer stops issuing draws after a step settles', async ({ page }
   await page.goto('/compute/');
   if (!await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl2')))) test.skip(true, 'WebGL is unavailable');
   await page.getByRole('button', { name: 'Показать вычисление' }).click();
-  await page.getByRole('button', { name: 'ALU 4–7' }).click();
+  await page.getByRole('button', { name: /^ALU(?:\s|$)/ }).click();
   await expect(page.getByTestId('compute-3d').locator('canvas')).toBeVisible();
   await page.evaluate(() => {
     const scope = window as Window & { __drawCount?: number };

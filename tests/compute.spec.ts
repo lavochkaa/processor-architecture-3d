@@ -69,7 +69,7 @@ test('keeps the static worked example available without JavaScript', async ({ br
 test('falls back to the complete flat route when WebGL is disabled', async ({ page }) => {
   await page.goto('/compute/');
   await page.getByRole('button', { name: 'Показать вычисление' }).click();
-  await page.getByRole('button', { name: 'ALU 4–7' }).click();
+  await page.getByRole('button', { name: /^ALU(?:\s|$)/ }).click();
   await expect(page.getByTestId('compute-flat')).toBeVisible();
   await expect(page.getByText('WEBGL НЕДОСТУПЕН · ПЛОСКИЙ ПУТЬ')).toBeVisible();
   await expect(page.getByRole('table')).toBeVisible();
@@ -80,7 +80,7 @@ test('keeps zero carry empty and preserves the fifth bit for 15 + 15', async ({ 
   await page.getByRole('textbox', { name: 'Число A' }).fill('0');
   await page.getByRole('textbox', { name: 'Число B' }).fill('0');
   await page.getByRole('button', { name: 'Показать вычисление' }).click();
-  await page.getByRole('button', { name: 'Результат 8–10' }).click();
+  await page.getByRole('button', { name: /^Результат(?:\s|$)/ }).click();
   await expect(page.locator('.compute-panel')).toContainText('c₄ = 0');
   await expect(page.locator('.compute-panel')).toContainText('00000');
   await page.getByRole('button', { name: 'Дальше' }).click();
@@ -92,7 +92,7 @@ test('keeps zero carry empty and preserves the fifth bit for 15 + 15', async ({ 
   await page.getByRole('textbox', { name: 'Число A' }).fill('15');
   await page.getByRole('textbox', { name: 'Число B' }).fill('15');
   await page.getByRole('button', { name: 'Показать вычисление' }).click();
-  await page.getByRole('button', { name: 'Результат 8–10' }).click();
+  await page.getByRole('button', { name: /^Результат(?:\s|$)/ }).click();
   await expect(page.locator('.compute-panel')).toContainText('11110');
   await page.getByRole('button', { name: 'Дальше' }).click();
   await expect(page.locator('.compute-panel')).toContainText('RAM');
