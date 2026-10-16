@@ -146,6 +146,7 @@
 .compute-intro{padding:60px 0 24px}
 .compute-empty-state{height:100%;min-height:0}
 .compute-flat-route{height:100%;min-height:0;padding-top:180px;overflow:auto}
+.compute-flat-route:focus-visible{outline:2px solid var(--teal);outline-offset:-4px}
 @media(max-width:1100px){
   .compute-viewport-footer{top:auto;bottom:143px;max-width:none}
 }

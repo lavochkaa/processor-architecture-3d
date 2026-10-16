@@ -14,7 +14,7 @@ export function FlatRoute({ state }: { state: AdditionTraceState }) {
     { id: 'screen', label: 'Экран', value: state.screenValue === null ? '—' : String(state.screenValue) }
   ];
 
-  return <div className="compute-flat-route" data-testid="compute-flat">
+  return <div className="compute-flat-route" data-testid="compute-flat" tabIndex={0} aria-label="Плоская схема вычисления">
     <div className="compute-plate-head"><span>ПЛАТА / УЧЕБНАЯ АБСТРАКЦИЯ</span><span>Один путь программы, не реальные дорожки платы</span></div>
     <ol className="compute-node-list" aria-label="Путь операндов">
       {nodes.map((node) => <li key={node.id} className={state.activeNode === node.id ? 'is-active' : ''} aria-current={state.activeNode === node.id ? 'step' : undefined}>
