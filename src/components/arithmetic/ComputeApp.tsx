@@ -31,6 +31,7 @@ export default function ComputeApp() {
   const [cameraResetToken, setCameraResetToken] = useState(0);
   const [presentedState, setPresentedState] = useState<AdditionTraceState | null>(null);
   const [hasQueuedNavigation, setHasQueuedNavigation] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
   const navigationBusy = useRef(false);
   const queuedNavigation = useRef<ControllerAction | null>(null);
   const aRef = useRef<HTMLInputElement>(null);
@@ -79,6 +80,8 @@ export default function ComputeApp() {
   }, [state, controller, showing3D, reducedMotion]);
 
   useEffect(() => setWebgl(canCreateWebGLContext()), []);
+
+  useEffect(() => setIsHydrated(true), []);
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -161,13 +164,13 @@ export default function ComputeApp() {
       <div className="compute-panel-top"><span className="compute-eyebrow">ЛОГИЧЕСКАЯ МОДЕЛЬ / ВВОД</span><span>ЧЕТЫРЕ БИТА НА ОПЕРАНД</span></div>
       <div className="compute-input-layout">
       <div><h2>Введите два числа</h2><p>Целые числа от 0 до 15. Модель покажет сложение справа налево и пятибитный ответ.</p><p>3D-клавиатура вводит число {selectedInput.toUpperCase()}.</p></div>
-        <form className="compute-form" onSubmit={submit} noValidate>
+        <form className="compute-form" onSubmit={submit} noValidate aria-busy={!isHydrated}>
           <div className="compute-fields">
-            <div className={`compute-field${selectedInput === 'a' ? ' is-selected' : ''}`}><label htmlFor="operand-a">Число A</label><input id="operand-a" ref={aRef} type="text" inputMode="numeric" autoComplete="off" value={aInput} aria-label="Число A" aria-invalid={aError ? true : undefined} aria-describedby={aError ? 'operand-a-error' : undefined} onFocus={() => setSelectedInput('a')} onKeyDown={(event) => mirrorPhysicalKey(event.key)} onChange={(event) => updateInput('a', event.target.value)} onBlur={() => setTouched((previous) => ({ ...previous, a: true }))} />{aError && <small id="operand-a-error" className="compute-error">{OPERAND_ERROR}</small>}</div>
+            <div className={`compute-field${selectedInput === 'a' ? ' is-selected' : ''}`}><label htmlFor="operand-a">Число A</label><input id="operand-a" ref={aRef} type="text" inputMode="numeric" autoComplete="off" value={aInput} disabled={!isHydrated} aria-label="Число A" aria-invalid={aError ? true : undefined} aria-describedby={aError ? 'operand-a-error' : undefined} onFocus={() => setSelectedInput('a')} onKeyDown={(event) => mirrorPhysicalKey(event.key)} onChange={(event) => updateInput('a', event.target.value)} onBlur={() => setTouched((previous) => ({ ...previous, a: true }))} />{aError && <small id="operand-a-error" className="compute-error">{OPERAND_ERROR}</small>}</div>
             <span className="compute-plus" aria-hidden="true">+</span>
-            <div className={`compute-field${selectedInput === 'b' ? ' is-selected' : ''}`}><label htmlFor="operand-b">Число B</label><input id="operand-b" ref={bRef} type="text" inputMode="numeric" autoComplete="off" value={bInput} aria-label="Число B" aria-invalid={bError ? true : undefined} aria-describedby={bError ? 'operand-b-error' : undefined} onFocus={() => setSelectedInput('b')} onKeyDown={(event) => mirrorPhysicalKey(event.key)} onChange={(event) => updateInput('b', event.target.value)} onBlur={() => setTouched((previous) => ({ ...previous, b: true }))} />{bError && <small id="operand-b-error" className="compute-error">{OPERAND_ERROR}</small>}</div>
+            <div className={`compute-field${selectedInput === 'b' ? ' is-selected' : ''}`}><label htmlFor="operand-b">Число B</label><input id="operand-b" ref={bRef} type="text" inputMode="numeric" autoComplete="off" value={bInput} disabled={!isHydrated} aria-label="Число B" aria-invalid={bError ? true : undefined} aria-describedby={bError ? 'operand-b-error' : undefined} onFocus={() => setSelectedInput('b')} onKeyDown={(event) => mirrorPhysicalKey(event.key)} onChange={(event) => updateInput('b', event.target.value)} onBlur={() => setTouched((previous) => ({ ...previous, b: true }))} />{bError && <small id="operand-b-error" className="compute-error">{OPERAND_ERROR}</small>}</div>
           </div>
-          <button className="button button-primary" type="submit">Показать вычисление</button>
+          <button className="button button-primary" type="submit" disabled={!isHydrated}>Показать вычисление</button>
         </form>
       </div>
     </header> : <AdditionPanel state={synchronizedState ?? state} onEdit={() => { clearNavigation(); dispatch({ type: 'edit' }); }} onOverview={() => setOverviewOverride(true)} />}
