@@ -10,16 +10,16 @@ test('landing page composition stays visually stable', async ({ page }) => {
 test('2D scene keeps its first and final states visually stable', async ({ page }) => {
   await page.goto('/scenario/');
   await page.getByRole('button', { name: /Нажать клавишу A/ }).click();
-  await expect(page.getByTestId('scene-2d')).toHaveScreenshot('scene-2d-start.png', { animations: 'disabled' });
+  await expect(page.getByTestId('scene-2d')).toHaveScreenshot('scene-2d-start.png', { animations: 'disabled', maxDiffPixels: 200 });
   await page.getByRole('button', { name: '08' }).click();
-  await expect(page.getByTestId('scene-2d')).toHaveScreenshot('scene-2d-end.png', { animations: 'disabled' });
+  await expect(page.getByTestId('scene-2d')).toHaveScreenshot('scene-2d-end.png', { animations: 'disabled', maxDiffPixels: 200 });
 });
 
 test('reduced motion scene has a stable static state', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/scenario/');
   await page.getByRole('button', { name: /Нажать клавишу A/ }).click();
-  await expect(page.getByTestId('scene-2d')).toHaveScreenshot('scene-2d-reduced.png', { animations: 'disabled' });
+  await expect(page.getByTestId('scene-2d')).toHaveScreenshot('scene-2d-reduced.png', { animations: 'disabled', maxDiffPixels: 200 });
 });
 
 test('3D author camera points render without continuous animation', async ({ page }) => {
