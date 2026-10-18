@@ -55,4 +55,28 @@ describe('addition controller', () => {
     expect(faster.speed).toBe(2);
     expect(currentTraceState(faster)).toBe(currentTraceState(started));
   });
+
+  it('keeps unavailable playback actions inert and stops safely at trace boundaries', () => {
+    const empty = createControllerState();
+    expect(reduceController(empty, { type: 'next' })).toBe(empty);
+    expect(reduceController(empty, { type: 'previous' })).toBe(empty);
+    expect(reduceController(empty, { type: 'jump-chapter', chapter: 'alu' })).toBe(empty);
+    expect(reduceController(empty, { type: 'play' })).toBe(empty);
+    expect(reduceController(empty, { type: 'pause' })).toBe(empty);
+    expect(reduceController(empty, { type: 'tick' })).toBe(empty);
+
+    const started = reduceController(empty, { type: 'start', a: 1, b: 1 });
+    expect(reduceController(started, { type: 'previous' }).trace).toBeNull();
+
+    let terminal = started;
+    for (let step = 0; step < 9; step += 1) terminal = reduceController(terminal, { type: 'next' });
+    expect(currentTraceState(terminal)?.step).toBe(10);
+    expect(reduceController(terminal, { type: 'play' })).toBe(terminal);
+
+    const finalTick = reduceController(
+      { ...terminal, stepIndex: 8, playing: true, announcement: null },
+      { type: 'tick' }
+    );
+    expect(finalTick).toMatchObject({ stepIndex: 9, playing: false, announcement: { kind: 'stop', step: 10 } });
+  });
 });
