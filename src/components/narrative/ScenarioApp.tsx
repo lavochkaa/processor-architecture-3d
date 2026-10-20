@@ -16,10 +16,12 @@ export default function ScenarioApp({ scenario }: { scenario: Scenario }) {
   const [fallbackMessage, setFallbackMessage] = useState('');
   const [resetToken, setResetToken] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
   const step = scenario.steps[state.stepIndex];
   const resolvedMode = resolveRenderMode(state.renderMode, webglAvailable === true);
 
   useEffect(() => {
+    setIsHydrated(true);
     setWebglAvailable(canCreateWebGLContext());
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
     const update = () => setReducedMotion(query.matches);
@@ -56,7 +58,7 @@ export default function ScenarioApp({ scenario }: { scenario: Scenario }) {
       <h2 id="start-heading">Одна клавиша.<br /><em>Несколько систем.</em></h2>
       <p>Нажмите условную клавишу и проследите, как действие превращается в символ в поле браузера.</p>
       <div className="intro-visual" aria-hidden="true"><span className="keycap">A</span><span className="intro-line" /><span className="screen-glyph">a<span className="cursor" /></span></div>
-      <button className="button button-primary" onClick={() => dispatch({ type: 'START' })}>Нажать клавишу A <span aria-hidden="true">↗</span></button>
+      <button className="button button-primary" disabled={!isHydrated} onClick={() => dispatch({ type: 'START' })}>Нажать клавишу A <span aria-hidden="true">↗</span></button>
       <p className="fine-print">Профиль: USB-клавиатура · настольный ПК · активное поле браузера · латинская буква без IME. Реальные системы могут работать иначе.</p>
     </section>;
   }

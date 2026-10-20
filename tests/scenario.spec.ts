@@ -2,7 +2,9 @@ import { expect, test } from '@playwright/test';
 
 test('keyboard-only visitor completes eight steps, changes modes and answers questions', async ({ page }) => {
   await page.goto('/scenario/');
-  await page.getByRole('button', { name: /Нажать клавишу A/ }).focus();
+  const startButton = page.getByRole('button', { name: /Нажать клавишу A/ });
+  await expect(startButton).toBeEnabled();
+  await startButton.focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Физическое нажатие' }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Экспертный' }).click();
