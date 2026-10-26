@@ -202,17 +202,24 @@ test('demand renderer stops issuing draws after a step settles', async ({ page }
   await page.getByRole('button', { name: 'Показать вычисление' }).click();
   await page.getByRole('button', { name: /^ALU(?:\s|$)/ }).click();
   await expect(page.getByTestId('compute-3d').locator('canvas')).toBeVisible();
+  await expect(page.getByTestId('compute-stage')).toHaveAttribute('data-presented-step', '4');
   await page.evaluate(() => {
-    const scope = window as Window & { __drawCount?: number };
+    const scope = window as Window & { __drawCount?: number; __lastDrawAt?: number };
     scope.__drawCount = 0;
     const original = WebGL2RenderingContext.prototype.drawElements;
     WebGL2RenderingContext.prototype.drawElements = function (...args) {
       scope.__drawCount = (scope.__drawCount ?? 0) + 1;
+      scope.__lastDrawAt = performance.now();
       return original.apply(this, args);
     };
   });
   await page.getByRole('button', { name: 'Дальше' }).click();
-  await page.waitForTimeout(1900);
+  await expect(page.getByTestId('compute-stage')).toHaveAttribute('data-presented-step', '5');
+  await page.waitForFunction(() => {
+    const scope = window as Window & { __drawCount?: number; __lastDrawAt?: number };
+    return (scope.__drawCount ?? 0) > 0 && scope.__lastDrawAt !== undefined
+      && performance.now() - scope.__lastDrawAt >= 700;
+  }, null, { timeout: 10_000 });
   const afterTransition = await page.evaluate(() => (window as Window & { __drawCount?: number }).__drawCount ?? 0);
   expect(afterTransition).toBeGreaterThan(0);
   await page.waitForTimeout(700);
