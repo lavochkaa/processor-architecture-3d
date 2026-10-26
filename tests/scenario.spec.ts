@@ -66,6 +66,22 @@ test('missing WebGL keeps the current step and uses the complete 2D route', asyn
   await expect(page.getByRole('status')).toContainText('WebGL недоступен');
 });
 
+test('WebGL 1-only browsers stay on the 2D route', async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, kind: string, ...args: unknown[]) {
+      if (kind === 'webgl2') return null;
+      if (kind === 'webgl') return {} as WebGLRenderingContext;
+      return Reflect.apply(original, this, [kind, ...args]);
+    } as typeof HTMLCanvasElement.prototype.getContext;
+  });
+  await page.goto('/scenario/');
+  await page.getByRole('button', { name: /Нажать клавишу A/ }).click();
+  await page.getByRole('button', { name: '3D-сцена' }).click();
+  await expect(page.getByTestId('scene-2d')).toBeVisible();
+  await expect(page.getByRole('status')).toContainText('WebGL недоступен');
+});
+
 test('lost WebGL context switches to 2D without losing progress', async ({ page }) => {
   await page.goto('/scenario/');
   await page.getByRole('button', { name: /Нажать клавишу A/ }).click();

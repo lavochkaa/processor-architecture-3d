@@ -7,7 +7,7 @@ export function resolveRenderMode(requested: RenderMode, webglAvailable: boolean
 export function canCreateWebGLContext(): boolean {
   try {
     const canvas = document.createElement('canvas');
-    const context = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
+    const context = canvas.getContext('webgl2');
     return context !== null;
   } catch {
     return false;
