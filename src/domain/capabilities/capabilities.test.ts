@@ -17,6 +17,8 @@ describe('render mode fallback', () => {
   it('detects working and unavailable WebGL contexts', () => {
     vi.stubGlobal('document', { createElement: () => ({ getContext: (kind: string) => kind === 'webgl2' ? {} : null }) });
     expect(canCreateWebGLContext()).toBe(true);
+    vi.stubGlobal('document', { createElement: () => ({ getContext: (kind: string) => kind === 'webgl' ? {} : null }) });
+    expect(canCreateWebGLContext()).toBe(false);
     vi.stubGlobal('document', { createElement: () => ({ getContext: () => null }) });
     expect(canCreateWebGLContext()).toBe(false);
     vi.stubGlobal('document', { createElement: () => { throw new Error('blocked'); } });
